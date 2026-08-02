@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+
+# PyInstaller output and the spec files build.py regenerates
+build/
+dist/
+*.spec
+
+.venv/
+venv/
+.qodo/

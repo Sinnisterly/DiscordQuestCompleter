@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "comment": [
+    "Games with a Discord quest currently running.",
+    "This file is intentionally empty in the repository: quest availability",
+    "changes constantly and stale entries are worse than none.",
+    "",
+    "Populate it by editing 'entries' below, or host an updated copy and set",
+    "'remote' to its raw URL so the app can refresh without a new release.",
+    "",
+    "Each entry needs 'name' matching a catalogue entry exactly (the Discord",
+    "application name, not the wiki spelling). 'until' is an optional ISO 8601",
+    "date; entries past it are ignored. 'reward' is free text shown in the UI."
+  ],
+  "remote": null,
+  "entries": []
+}

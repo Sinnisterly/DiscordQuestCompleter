@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "source": "r/DiscordQuests community path index",
+  "comment": [
+    "Community-verified folder structures. These win over paths derived from",
+    "Discord's detectable list, because they are what people confirmed working.",
+    "'path' is relative to the emulation root; forward slashes are normalised",
+    "to the platform separator at build time.",
+    "'alts' are additional accepted paths. 'note' explains any deviation from",
+    "the wiki text. 'template' marks paths containing {placeholders}.",
+    "'standalone' marks a game Discord lists with no executables of its own,",
+    "so this entry is the only path data that exists for it.",
+    "'aliases' feed the search index only."
+  ],
+  "entries": [
+    { "name": "Arc Raiders", "path": "Arc Raiders/PioneerGame.exe" },
+    { "name": "Arena Breakout Infinite", "path": "Arena Breakout Infinite/ABInfinite/Binaries/Win64/UAGame.exe" },
+    { "name": "Arknights Endfield", "path": "Arknights Endfield/EndField Game/Endfield.exe" },
+    { "name": "Battlefield 6", "path": "Battlefield 6/bf6.exe" },
+    { "name": "Blue Protocol Star Resonance", "path": "Blue Protocol Star Resonance/bpsr/BPSR_STEAM.exe" },
+    {
+      "name": "Comet",
+      "aliases": ["Comet Browser", "Perplexity Comet"],
+      "path": "Comet/Perplexity/Comet/Application/comet.exe",
+      "standalone": true,
+      "note": "Discord lists this app with no executables; community path is the only source."
+    },
+    { "name": "Delta Force", "path": "Delta Force/Game/DeltaForce/Binaries/Win64/DeltaForceClient-Win64-Shipping.exe" },
+    { "name": "Destiny 2", "path": "Destiny 2/destiny2.exe" },
+    { "name": "Duet Night Abyss", "path": "Duet Night Abyss/EM-Win64-Shipping.exe" },
+    { "name": "EA Sports FC 26", "path": "EA SPORTS FC 26/FC26.exe" },
+    { "name": "EMPULSE", "path": "EMPULSE Demo/Orion/Binaries/Win64/OrionClient-Win64-Shipping.exe" },
+    {
+      "name": "Enginefall",
+      "path": "Enginefall Demo/Coltrane/Binaries/Win64/ColtraneClient-Win64-Shipping.exe",
+      "standalone": true,
+      "note": "Discord lists this app with no executables; community path is the only source."
+    },
+    { "name": "Escape the Backrooms", "path": "Win64/Backrooms-Win64-Shipping.exe" },
+    { "name": "EVE Online", "path": "Eve Online/exefile.exe" },
+    { "name": "Fallout 4", "path": "Fallout 4/Fallout4.exe" },
+    { "name": "Fallout 76", "path": "Fallout76/Fallout76.exe" },
+    { "name": "Fortnite", "path": "Fortnite/FortniteGame/Binaries/Win64/FortniteClient-Win64-Shipping.exe" },
+    { "name": "Genshin Impact", "path": "Genshin Impact/Genshin Impact game/GenshinImpact.exe" },
+    { "name": "GearUP", "path": "Gearup_ball.exe" },
+    { "name": "GODDESS OF VICTORY: NIKKE", "path": "NIKKE/NIKKE/Game/nikke.exe" },
+    { "name": "Grounded 2", "path": "Grounded 2/WinGRTS/Grounded2-WinGRTS-Shipping.exe" },
+    { "name": "Highguard", "path": "Highguard/Win64/HighguardClient-Win64-Shipping.exe" },
+    { "name": "Honkai: Star Rail", "path": "Star Rail/Games/StarRail.exe" },
+    { "name": "Hunt: Showdown 1896", "path": "Hunt Showdown/bin/win_x64/HuntGame.exe" },
+    { "name": "League of Legends", "path": "Game/League of Legends.exe" },
+    { "name": "Marvel Rivals", "path": "MarvelRivals/MarvelRivals_Launcher.exe" },
+    { "name": "NTE: Neverness to Everness", "path": "Neverness To Everness/Client/WindowsNoEditor/HT/Binaries/Win64/HTGame.exe" },
+    { "name": "Old School RuneScape", "path": "win64/osclient.exe" },
+    { "name": "Once Human", "path": "Once Human/ONCE_HUMAN.exe" },
+    {
+      "name": "Opera GX",
+      "aliases": ["Opera", "Opera Browser"],
+      "path": "Opera GX/opera.exe",
+      "standalone": true,
+      "note": "Discord lists no executables for the browser; community path is the only source."
+    },
+    { "name": "Path of Exile 2", "path": "Grinding Gear Games/Path of Exile 2/pathofexile.exe" },
+    {
+      "name": "PUBG: BATTLEGROUNDS",
+      "path": "PUBG/TslGame/Binaries/Win64/TslGame.exe",
+      "note": "Wiki entry stops at the Win64 folder; executable name taken from Discord's detectable list."
+    },
+    { "name": "Pragmata", "path": "PRAGMATA SKETCHBOOK/PRAGMATA_SKETCHBOOK.exe" },
+    {
+      "name": "RAID: Shadow Legends",
+      "path": "RAID Shadow Legends/Raid.exe",
+      "alts": ["build/Raid.exe"]
+    },
+    { "name": "Risk of Rain 2", "path": "Risk of Rain 2/Risk of Rain 2.exe" },
+    {
+      "name": "Roblox",
+      "path": "Roblox/Versions/version-{version_hash}/RobloxPlayerBeta.exe",
+      "template": true,
+      "note": "Discord matches RobloxPlayerBeta.exe by filename alone, with no folder requirement, so the generated version id is cosmetic."
+    },
+    { "name": "Rune Dice", "path": "Rune Dice/Rune Dice.exe" },
+    { "name": "RuneScape", "path": "win64/runescape.exe" },
+    {
+      "name": "Shift at Midnight",
+      "path": "Shift At Midnight Demo/ShiftAtMidnight.exe",
+      "standalone": true,
+      "note": "Discord lists this app with no executables; community path is the only source."
+    },
+    { "name": "skate.", "path": "skate/skate.exe" },
+    { "name": "STALZONE", "path": "bin/stalcraftw.exe", "alts": ["bin/stalzonew.exe"] },
+    { "name": "Storm Lancers", "path": "Storm Lancers Demo/StormLancersDemo.exe" },
+    {
+      "name": "Summoners War: Sky Arena",
+      "aliases": ["Summoners War"],
+      "path": "Summoners War/common/Summoners War/SummonersWar.exe",
+      "note": "Wiki lists this as 'Summoners War'; Discord's entry is 'Summoners War: Sky Arena'."
+    },
+    { "name": "Terminull Brigade", "path": "TerminullBrigade/Project Rogueteers/Rogueteers/Binaries/Win64/Rouge-Win64-Shipping.exe" },
+    { "name": "The Elder Scrolls Online", "path": "Zenimax Online/The Elder Scrolls Online/game/client/eso64.exe" },
+    { "name": "The Mound: Omen of Cthulhu", "path": "The Mound Omen of Cthulhu/Binaries/Win64/TheMound-Win64-Shipping.exe" },
+    { "name": "Torchlight: Infinite", "path": "Torchlight_Infinite/UE_game/Binaries/Win64/Torchlight_Infinite.exe" },
+    { "name": "VALORANT", "path": "Riot Games/VALORANT/live/ShooterGame/Binaries/Win64/VALORANT-Win64-Shipping.exe" },
+    {
+      "name": "Vindictus",
+      "path": "Vindictus/Vindictus_x64.exe",
+      "note": "Wiki entry omits the .exe suffix."
+    },
+    { "name": "Where Winds Meet", "path": "wwm_standard/Engine/Binaries/Win64r/wwm.exe" },
+    { "name": "World of Tanks: HEAT", "path": "WoT HEAT/wgcs_api.exe" },
+    { "name": "World of Warcraft", "path": "World of Warcraft/_retail_/Wow.exe" },
+    { "name": "Wuthering Waves", "path": "Wuthering Waves/Wuthering Waves Game/Client/Binaries/Win64/Wuthering Waves.exe" },
+    { "name": "Yu-Gi-Oh! Master Duel", "path": "Yu-Gi-Oh!  Master Duel/masterduel.exe", "note": "Folder name contains a double space, matching Discord's entry." },
+    { "name": "Zenless Zone Zero", "path": "ZenlessZoneZero Game/ZenlessZoneZero.exe" },
+    { "name": "2XKO", "path": "2XKO/Live/Lion/Binaries/Win64/Lion-Win64-Shipping.exe" }
+  ]
+}

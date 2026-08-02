@@ -133,6 +133,81 @@ def installed_dirs() -> dict[str, Path]:
     return found
 
 
+def installed_apps() -> dict[str, dict]:
+    """Every installed app Steam knows about, keyed by app id.
+
+    Read from the appmanifest files rather than by listing directories, so a
+    leftover folder from an uninstalled game is not mistaken for an install.
+    """
+    apps: dict[str, dict] = {}
+    for steamapps in library_roots():
+        try:
+            manifests = list(steamapps.glob('appmanifest_*.acf'))
+        except OSError:
+            continue
+
+        for manifest in manifests:
+            try:
+                data = parse_vdf(manifest.read_text(encoding='utf-8', errors='replace'))
+            except OSError:
+                continue
+
+            state = data.get('AppState') or {}
+            app_id = state.get('appid') or manifest.stem.split('_')[-1]
+            install_dir = state.get('installdir')
+            if not app_id or not install_dir:
+                continue
+
+            path = steamapps / 'common' / install_dir
+            if not path.is_dir():
+                continue
+
+            apps[str(app_id)] = {
+                'name': state.get('name') or install_dir,
+                'installdir': install_dir,
+                'path': path,
+                'fully_installed': str(state.get('StateFlags') or '') == '4',
+            }
+    return apps
+
+
+def _loose(text: str) -> str:
+    return ''.join(ch for ch in (text or '').lower() if ch.isalnum())
+
+
+def find_install(app_id: str | None = None, names: list[str] | None = None) -> dict | None:
+    """Locate an installed app by Steam app id, then by name.
+
+    The app id is exact and preferred. Names are matched loosely because the
+    catalogue name and the install folder often differ: Discord calls it
+    "Shift at Midnight" while Steam installs "Shift At Midnight Demo".
+    """
+    apps = installed_apps()
+    if app_id and str(app_id) in apps:
+        return apps[str(app_id)]
+
+    for name in names or []:
+        wanted = _loose(name)
+        if not wanted:
+            continue
+        for entry in apps.values():
+            for candidate in (entry['installdir'], entry['name']):
+                if _loose(candidate) == wanted:
+                    return entry
+
+    # Second pass, allowing a suffix such as "Demo" or "Playtest".
+    for name in names or []:
+        wanted = _loose(name)
+        if len(wanted) < 4:
+            continue
+        for entry in apps.values():
+            for candidate in (entry['installdir'], entry['name']):
+                loose = _loose(candidate)
+                if loose.startswith(wanted) or wanted.startswith(loose):
+                    return entry
+    return None
+
+
 def find_owned(install_dir_name: str) -> Path | None:
     """Return the real install path if the user already owns this game."""
     if not install_dir_name:

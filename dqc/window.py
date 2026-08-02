@@ -167,7 +167,11 @@ class GameRow(QWidget):
         badges.setSpacing(6)
         if game.has_quest:
             badges.addWidget(_badge('QUEST LIVE', WARN))
-        if game.is_verified:
+        if not game.detectable:
+            badges.addWidget(_badge('NEEDS STEAM INSTALL', WARN))
+        elif game.requires:
+            badges.addWidget(_badge('NEEDS EXTRA STEP', WARN))
+        elif game.is_verified:
             badges.addWidget(_badge('COMMUNITY VERIFIED', GOOD))
         elif game.exes:
             badges.addWidget(_badge('FROM DISCORD', ACCENT))
@@ -488,8 +492,9 @@ class MainWindow(QWidget):
         placement_col.setSpacing(5)
         placement_col.addWidget(_section('Placement'))
         self.placement = QComboBox()
-        self.placement.addItem('Sandbox (recommended)', False)
-        self.placement.addItem('Inside Steam library', True)
+        self.placement.addItem('Sandbox (recommended)', emulator.SANDBOX)
+        self.placement.addItem('Inside Steam library', emulator.STEAM)
+        self.placement.addItem('Replace installed copy', emulator.INSTALLED)
         self.placement.currentIndexChanged.connect(self._path_changed)
         placement_col.addWidget(self.placement)
         controls.addLayout(placement_col, 1)
@@ -742,14 +747,30 @@ class MainWindow(QWidget):
         self.detail_name.setText(game.name)
 
         note_parts = []
+        warn = False
+        if not game.detectable:
+            note_parts.append(
+                'Discord publishes no executable for this app. It still gets '
+                'detected, but in practice only when the game is installed '
+                'through Steam and Replace installed copy is used. A sandbox '
+                'is unlikely to register.'
+            )
+            warn = True
+        if game.requires:
+            note_parts.append(game.requires)
+            warn = True
+        if game.requires_url:
+            note_parts.append(game.requires_url)
         if game.has_quest and game.quest_reward:
             note_parts.append(f'Quest running: {game.quest_reward}')
         if game.note:
             note_parts.append(game.note)
         if game.is_template:
             note_parts.append('A unique folder id is generated for each launch.')
+
         if note_parts:
             self.detail_note.setText(' '.join(note_parts))
+            self.detail_note.setStyleSheet(f'color: {BAD};' if warn else '')
             self.detail_note.show()
         else:
             self.detail_note.hide()
@@ -757,6 +778,23 @@ class MainWindow(QWidget):
         # Show the row capsule upscaled straight away if we already have it,
         # so there is never an empty panel while the larger header downloads.
         self.loader.prefetch_icon(game)
+
+        # Replacing a real install is the only thing that works for titles
+        # Discord cannot match by process, so offer it when one is present and
+        # pick it automatically when nothing else can succeed.
+        install = emulator.find_installed(game)
+        index = self.placement.findData(emulator.INSTALLED)
+        if index >= 0:
+            label = (
+                f'Replace installed copy ({install["installdir"]})'
+                if install else 'Replace installed copy (none found)'
+            )
+            self.placement.setItemText(index, label)
+            self.placement.model().item(index).setEnabled(install is not None)
+        if install is not None and not game.detectable:
+            self.placement.setCurrentIndex(index)
+        elif self.placement.currentData() == emulator.INSTALLED and install is None:
+            self.placement.setCurrentIndex(0)
         self.quest_button.setChecked(game.has_quest)
         self.quest_button.setText(
             'Quest running' if game.has_quest else 'Mark quest running'
@@ -800,9 +838,8 @@ class MainWindow(QWidget):
             self.resolved.setText('')
             return
         chosen = self.path_box.currentData()
-        anchored = bool(self.placement.currentData())
         try:
-            plan = emulator.plan_session(game, chosen, anchored=anchored)
+            plan = emulator.plan_session(game, chosen, mode=self.placement.currentData())
         except emulator.EmulationError as exc:
             self.resolved.setText(str(exc))
             self.resolved.setStyleSheet(f'color: {BAD};')
@@ -835,12 +872,37 @@ class MainWindow(QWidget):
             QMessageBox.warning(self, 'Invalid duration', str(exc))
             return
 
-        anchored = bool(self.placement.currentData())
         try:
-            plan = emulator.plan_session(game, self.path_box.currentData(), anchored=anchored)
+            plan = emulator.plan_session(
+                game, self.path_box.currentData(), mode=self.placement.currentData(),
+            )
         except emulator.EmulationError as exc:
             QMessageBox.warning(self, 'Cannot launch', str(exc))
             return
+
+        # Warn before the user spends the full duration finding out. Replacing
+        # a real install is the arrangement these titles are known to accept,
+        # so there is nothing to warn about in that case.
+        risky = (not game.detectable or game.requires) and plan.mode != emulator.INSTALLED
+        if risky:
+            reasons = []
+            if not game.detectable:
+                reasons.append(
+                    'Discord publishes no executable for this app. Titles like '
+                    'this normally register only when the game is installed '
+                    'through Steam and you pick Replace installed copy.'
+                )
+            if game.requires:
+                reasons.append(game.requires)
+            if game.requires_url:
+                reasons.append(game.requires_url)
+
+            confirm = QMessageBox.question(
+                self, 'This one may not register',
+                '\n\n'.join(reasons) + '\n\nStart anyway?',
+            )
+            if confirm != QMessageBox.Yes:
+                return
 
         if plan.warning:
             confirm = QMessageBox.question(

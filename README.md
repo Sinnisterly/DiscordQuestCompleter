@@ -82,12 +82,40 @@ Some games accept more than one executable. The **Executable path** dropdown
 lists every path known for that game, with community-confirmed ones marked
 `[verified]`. Try the next one down.
 
-A few games appear to check that their folders were created by Steam. For
-those, switch **Placement** to `Inside Steam library`. This writes into your
-real `steamapps\common` folder instead of the app's own directory, and it will
-refuse to run if you already own the game in question. If the game still is not
-detected, download it on Steam and pause the download at one or two percent,
-then try again with `Inside Steam library` selected.
+If that does not help, work down the **Placement** options. They differ only in
+where the stand-in is put: `Sandbox` uses the app's own folder and suits most
+games, `Inside Steam library` writes into your real `steamapps\common` for
+games that check their folder came from Steam, and `Replace installed copy`
+stands in for the real executable of a game you have actually installed.
+
+### Games that need the Steam version installed
+
+A few quests, usually demos being promoted, will not register from a sandbox no
+matter how correct the path is. These are marked **NEEDS STEAM INSTALL** in the
+list.
+
+The reason is in the data. Discord publishes the list of executables it watches
+for, and for these titles that list is empty, so the only description of the
+game reaches your client with the quest itself. In practice they are credited
+only when the game is really installed through Steam. Try the demo first!
+
+What works:
+
+1. Install the game or demo from Steam. It has to finish. Pausing the download
+   at one or two percent is **not** enough for these, whatever older guides say.
+2. Select the game here. **Replace installed copy** is chosen automatically once
+   the install is detected, and the dropdown names the folder it found.
+3. Press Launch and leave the countdown running.
+
+While the session runs, the real executable is renamed with a `.dqc-backup`
+suffix and the stand-in takes its place. The original is put back the moment the
+session ends. If the program is killed partway through, it is restored on the
+next launch instead. Steam must not be updating that game at the time, and the
+game itself must not be running, or the rename fails. The program says so rather
+than leaving anything half-done.
+
+Confirmed working this way: **Shift at Midnight**. Also flagged as needing it:
+**Storm Lancers**.
 
 ## Where the paths come from
 
@@ -117,12 +145,17 @@ By default, only inside:
 ```
 
 That directory holds the fake game folders while a session runs, the cached
-game list, and cached thumbnails. Administrator rights are not needed and no
-real game is renamed or moved. Choosing `Inside Steam library` is the one
-exception, and it asks for confirmation first.
+game list, and cached thumbnails. Administrator rights are not needed.
 
-If the program is killed while a session is running, the leftovers are recorded
-on disk beforehand and cleaned up the next time it starts.
+The other two placement modes are the exceptions, and both ask first.
+`Inside Steam library` creates folders in your real `steamapps\common` and
+refuses to run if you already own the game in question. `Replace installed copy`
+renames one real executable for the length of the session and puts it back
+afterwards.
+
+Every change is written to a journal before it happens, so a crash, a power cut
+or a killed process is undone the next time the program starts. A displaced
+executable is always restored before anything else is tidied up.
 
 ## Marking quests as live
 

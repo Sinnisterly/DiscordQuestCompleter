@@ -53,6 +53,10 @@ class Game:
     note: str | None = None
     is_template: bool = False
 
+    # Extra conditions the community reports for this title.
+    requires: str | None = None
+    requires_url: str | None = None
+
     # Filled in from the active-quest list, which is usually empty.
     quest_reward: str | None = None
     has_quest: bool = False
@@ -60,6 +64,20 @@ class Game:
     @property
     def is_verified(self) -> bool:
         return bool(self.verified)
+
+    @property
+    def detectable(self) -> bool:
+        """Whether Discord publishes any executable to match this app against.
+
+        Some applications appear in Discord's list with no executables at all.
+        That does not make them impossible: a quest carries its own executable
+        list to the client, so detection still happens, it is just not
+        described in the public data. In practice these titles register only
+        when the game is genuinely installed through Steam and the stand-in
+        replaces the real executable. Shift at Midnight was confirmed to work
+        that way, and not to work from a sandbox.
+        """
+        return bool(self.exes or self.launchers)
 
     @property
     def candidates(self) -> list[str]:
@@ -131,6 +149,8 @@ def _game_from_override(entry: dict) -> Game:
         verified=[entry['path'], *(entry.get('alts') or [])],
         note=entry.get('note'),
         is_template=bool(entry.get('template')),
+        requires=entry.get('requires'),
+        requires_url=entry.get('requires_url'),
     )
 
 
@@ -196,6 +216,8 @@ class Catalog:
                 game.verified = [override['path'], *(override.get('alts') or [])]
                 game.note = override.get('note')
                 game.is_template = bool(override.get('template'))
+                game.requires = override.get('requires')
+                game.requires_url = override.get('requires_url')
                 for alias in override.get('aliases') or []:
                     if alias not in game.aliases:
                         game.aliases.append(alias)

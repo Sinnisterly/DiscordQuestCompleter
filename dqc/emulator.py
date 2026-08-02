@@ -66,30 +66,103 @@ def to_relative(path: str) -> Path:
 
 # ---------------------------------------------------------------- placement
 
+SANDBOX = 'sandbox'
+STEAM = 'steam'
+INSTALLED = 'installed'
+
+
 @dataclass
 class Plan:
     """Where a session will write, decided before anything touches disk."""
     game: Game
     relative: Path
-    root: Path          # top-level directory we create and later remove
     exe_path: Path
-    anchored: bool      # True when placed inside a real Steam library
+    mode: str = SANDBOX
+    root: Path | None = None      # directory tree we create and later remove
+    backup: Path | None = None    # where a displaced original is kept
     warning: str | None = None
 
     @property
     def exe_name(self) -> str:
         return self.exe_path.name
 
+    @property
+    def anchored(self) -> bool:
+        return self.mode != SANDBOX
 
-def plan_session(game: Game, path: str | None = None, anchored: bool = False) -> Plan:
+
+def find_installed(game: Game, path: str | None = None) -> dict | None:
+    """The user's real installation of this game, if Steam has one.
+
+    The first component of a community path is usually the Steam install
+    folder, which makes it a better clue than the catalogue name.
+    """
+    names = [game.name]
+    chosen = path or game.primary
+    if chosen:
+        try:
+            parts = to_relative(chosen).parts
+        except EmulationError:
+            parts = ()
+        if len(parts) > 1:
+            names.insert(0, parts[0])
+    return steamlibs.find_install(app_id=game.steam_appid, names=names)
+
+
+def _locate_real_exe(install: Path, relative: Path) -> Path | None:
+    """Find the genuine executable inside an installed game.
+
+    Tries the community path first, then searches by filename, since an
+    install directory does not always match the first path component.
+    """
+    direct = install.parent / relative
+    if direct.is_file():
+        return direct
+
+    inside = install / relative
+    if inside.is_file():
+        return inside
+
+    wanted = relative.name.lower()
+    try:
+        for candidate in install.rglob('*.exe'):
+            if candidate.name.lower() == wanted:
+                return candidate
+    except OSError:
+        pass
+    return None
+
+
+def plan_session(game: Game, path: str | None = None, mode: str = SANDBOX) -> Plan:
     chosen = path or game.primary
     if not chosen:
         raise EmulationError(f'No known executable path for {game.name}.')
 
     relative = to_relative(chosen)
-    warning = None
 
-    if anchored:
+    if mode == INSTALLED:
+        install = find_installed(game, chosen)
+        if install is None:
+            raise EmulationError(
+                f'No Steam installation of {game.name} was found. '
+                'Install it, or use sandbox placement.'
+            )
+        target = _locate_real_exe(install['path'], relative)
+        if target is None:
+            raise EmulationError(
+                f'Found {install["path"]}, but no file named "{relative.name}" '
+                'inside it. Pick a different executable path.'
+            )
+        return Plan(
+            game=game, relative=relative, exe_path=target, mode=INSTALLED,
+            backup=target.with_name(target.name + '.dqc-backup'),
+            warning=(
+                f'The real {target.name} will be renamed while the session runs '
+                'and put back afterwards.'
+            ),
+        )
+
+    if mode == STEAM:
         common = steamlibs.default_common()
         if common is None:
             raise EmulationError(
@@ -100,17 +173,16 @@ def plan_session(game: Game, path: str | None = None, anchored: bool = False) ->
         if owned is not None:
             raise EmulationError(
                 f'You already own something installed at "{owned}". '
-                f'Refusing to write there. Use sandbox placement instead.'
+                f'Refusing to write there. Use the installed copy instead.'
             )
-        base = common
-        root = common / top
-        warning = 'Writing inside a real Steam library.'
-    else:
-        base = sandbox_root() / safe_name(game.name)
-        root = base
+        return Plan(
+            game=game, relative=relative, exe_path=common / relative, mode=STEAM,
+            root=common / top, warning='Writing inside a real Steam library.',
+        )
 
-    return Plan(game=game, relative=relative, root=root, exe_path=base / relative,
-                anchored=anchored, warning=warning)
+    base = sandbox_root() / safe_name(game.name)
+    return Plan(game=game, relative=relative, exe_path=base / relative,
+                mode=SANDBOX, root=base)
 
 
 # -------------------------------------------------------------------- stub
@@ -189,7 +261,17 @@ class Session:
 
     def start(self) -> None:
         plan = self.plan
-        if plan.exe_path.exists():
+
+        if plan.mode == INSTALLED:
+            if not plan.exe_path.is_file():
+                raise EmulationError(f'{plan.exe_path} is missing.')
+            if plan.backup is not None and plan.backup.exists():
+                raise EmulationError(
+                    f'A backup already exists at {plan.backup}. A previous '
+                    'session may still be running, or it did not finish '
+                    'cleanly. Restart the app to have it restored.'
+                )
+        elif plan.exe_path.exists():
             raise EmulationError(
                 f'{plan.exe_path} already exists. Another session may be running.'
             )
@@ -198,9 +280,21 @@ class Session:
         self.entry = journal.Entry(
             game=plan.game.name,
             created_root=plan.root,
+            backup=plan.backup,
             stub=plan.exe_path,
         )
         journal.record(self.entry)
+
+        # Step aside from the real executable before writing over its name.
+        if plan.mode == INSTALLED and plan.backup is not None:
+            try:
+                os.replace(plan.exe_path, plan.backup)
+            except OSError as exc:
+                self._cleanup()
+                raise EmulationError(
+                    f'Could not move the original {plan.exe_path.name} aside: {exc}. '
+                    'Close the game and Steam, then try again.'
+                ) from exc
 
         try:
             self._created = provision_stub(plan.exe_path)
@@ -257,16 +351,25 @@ class Session:
                 return
             self._cleaned.set()
 
-        root = self.plan.root
+        plan = self.plan
         try:
-            if self.plan.anchored:
+            if plan.mode == INSTALLED:
+                # Putting the real executable back matters more than tidying,
+                # so it happens first and on its own.
+                for path in self._created:
+                    if path != plan.backup and path.is_file():
+                        path.unlink(missing_ok=True)
+                if plan.backup is not None and plan.backup.is_file():
+                    os.replace(plan.backup, plan.exe_path)
+            elif plan.mode == STEAM:
                 # Only remove what we created, never a directory that predates us.
                 for path in reversed(self._created):
                     if path.is_file():
                         path.unlink(missing_ok=True)
-                _prune_empty(self.plan.exe_path.parent, root)
-            elif root.is_dir():
-                shutil.rmtree(root, ignore_errors=True)
+                if plan.root is not None:
+                    _prune_empty(plan.exe_path.parent, plan.root)
+            elif plan.root is not None and plan.root.is_dir():
+                shutil.rmtree(plan.root, ignore_errors=True)
         except OSError:
             pass
 

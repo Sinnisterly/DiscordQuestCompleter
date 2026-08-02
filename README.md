@@ -2,6 +2,8 @@
 
 Completes the "play a game" type of Discord quest without installing the game.
 
+![The main window, showing the game list, the selected game and its resolved path](docs/showcase.png)
+
 Discord decides which game you are playing by looking at the executable of each
 running process. It keeps a public list of every game it can recognise, and for
 most of them it checks the end of the path as well, so `Marvel Rivals` means a
@@ -22,6 +24,15 @@ Windows 10 or later. Steam is not required.
 Download `DiscordQuestCompleter.exe` from the
 [latest release](../../releases/latest). It is a single file and needs no
 installation.
+
+Windows will most likely warn you the first time you run it, with a blue
+"Windows protected your PC" box. Choose **More info**, then **Run anyway**.
+This happens because the file is not signed with a paid code-signing
+certificate, so SmartScreen has no reputation history for it. It is not a
+judgement about what the program does, and the warning fades as a release
+accumulates downloads. If you would rather not take that on trust, all the
+source is here: run it with `python run.py`, or build the executable yourself
+with `python build.py` and compare.
 
 To run from source instead:
 

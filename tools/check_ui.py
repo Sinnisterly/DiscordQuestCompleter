@@ -76,7 +76,7 @@ check('bogus rejected', not backend.durationHint('bogus')['ok'])
 
 print('pages and themes')
 pages = sys.argv[1] if len(sys.argv) > 1 else None
-for index in range(5):
+for index in range(6):
     window.setProperty('currentPage', index)
     wait(400)
     if pages:

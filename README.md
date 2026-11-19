@@ -43,7 +43,7 @@ python run.py
 
 ## Using it
 
-The window has five pages, listed on the left.
+The window has six pages, listed on the left.
 
 **Quests.** Open Discord and click **Quests** in its left sidebar. Back in
 this app, press **Detect from Discord**. Every unfinished "play a game"
@@ -69,6 +69,13 @@ executable path, placement and duration, then press **Launch**.
 The duration field takes `20m`, `1h30m`, `25:00`, plain seconds like `900`,
 and arithmetic like `10 * 60`. Leave it empty for 15 minutes 30 seconds. The
 extra 30 seconds covers the time Discord and the stand-in take to sync.
+
+**Orbs.** Your orb balance, how many orbs you earned this week, this month
+and since tracking began, how many are on offer in open quests, and a chart
+of your balance over the last 30 days. The balance is read from the top of
+Discord's Quests page each time that page is read, so the history fills in as
+you use the app. Orbs earned are worked out from the rise between readings,
+and orbs spent from any drop.
 
 **Sessions.** Running sessions with their progress and a **Stop** button.
 
@@ -99,6 +106,16 @@ When a session ends you get a notification saying whether it ran the full
 duration or was stopped early. Both can be turned off on the Settings
 page. If your desktop has no system tray, the
 window closes normally and the option is disabled.
+
+**New quest alerts.** When the Quests page is read, either by Watch Discord
+or by pressing Detect, any quest that was not there before gets a Windows
+notification with its reward and end date. The first read only takes note of
+what is already there. Turn alerts off in Settings.
+
+**Start with Windows.** Turn this on in Settings and the app opens in the
+tray when you sign in, without showing its window, so new quests are caught
+without you starting it. It adds one entry to your user's startup programs,
+which you can also turn off in Windows Settings under Apps, Startup.
 
 ### If the quest does not progress
 
@@ -276,7 +293,9 @@ dqc/
   discordui.py  reads quests from the Discord window
   emulator.py   builds the folder structure, runs and cleans up the placeholder
   journal.py    records changes before they happen so a crash can be undone
-  quests.py     quest sources: detected, shared and marked
+  quests.py     quest sources: detected, shared and marked; new-quest memory
+  orbs.py       orb balance history
+  startup.py    the Start with Windows entry
   themes.py     theme files: presets, saving, import and export
   settings.py   user preferences
   steamlibs.py  finds Steam libraries, used to avoid games you own

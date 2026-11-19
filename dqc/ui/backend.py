@@ -13,6 +13,7 @@ refresh never finished.
 
 from __future__ import annotations
 
+import datetime as dt
 import itertools
 import threading
 import time
@@ -20,7 +21,7 @@ import time
 from PySide6.QtCore import QObject, QPoint, QRect, QTimer, Property, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from .. import __version__, discordui, emulator, journal, quests, settings, thumbs
+from .. import __version__, discordui, emulator, journal, orbs, quests, settings, startup, thumbs
 from ..appdirs import data_dir
 from ..catalog import Catalog, Game
 from ..duration import DEFAULT_SECONDS, DurationError, format_duration, parse_duration
@@ -73,6 +74,7 @@ class Backend(QObject):
     # To QML
     statusChanged = Signal()          # catalogue and quest status text
     catalogChanged = Signal()         # games or badges changed; re-read details
+    orbsChanged = Signal()            # a new orb balance was recorded
     settingsChanged = Signal()
     toast = Signal(str, str)          # text, kind: info / good / bad
     dialogRequested = Signal(int, str, str, str, str)  # token, title, body, ok, cancel
@@ -126,6 +128,8 @@ class Backend(QObject):
         # Status text such as "5 min ago" goes stale on its own.
         self._clock = QTimer(self)
         self._clock.timeout.connect(self.statusChanged.emit)
+        self._clock.timeout.connect(self.orbsChanged.emit)
+        self.catalogChanged.connect(self.orbsChanged.emit)  # available orbs change with quests
         self._clock.start(30_000)
 
         self.search('')
@@ -249,6 +253,35 @@ class Backend(QObject):
     def _get_tray_available(self) -> bool:
         return self.tray_available
 
+    def _get_alerts(self) -> bool:
+        return bool(settings.get('quest_alerts', True))
+
+    def _set_alerts(self, value: bool) -> None:
+        settings.set_value('quest_alerts', bool(value))
+        self.settingsChanged.emit()
+
+    def _get_startup(self) -> bool:
+        return startup.is_enabled()
+
+    def _set_startup(self, value: bool) -> None:
+        error = startup.set_enabled(bool(value))
+        if error:
+            self.toast.emit(error, 'bad')
+        self.settingsChanged.emit()
+
+    def _orb_summary(self) -> dict:
+        data = orbs.summary()
+        data['available'] = self._quest_orbs() + self._other_orbs()
+        data['updatedText'] = _ago(data['updated']) if data['updated'] else ''
+        data['sinceText'] = (
+            dt.date.fromtimestamp(data['since']).strftime('%B %d, %Y').replace(' 0', ' ')
+            if data['since'] else ''
+        )
+        return data
+
+    alertsEnabled = Property(bool, _get_alerts, _set_alerts, notify=settingsChanged)
+    startWithWindows = Property(bool, _get_startup, _set_startup, notify=settingsChanged)
+    orbSummary = Property('QVariantMap', _orb_summary, notify=orbsChanged)
     trayEnabled = Property(bool, _get_tray, _set_tray, notify=settingsChanged)
     notifyEnabled = Property(bool, _get_notify, _set_notify, notify=settingsChanged)
     watchQuests = Property(bool, _get_watch, _set_watch, notify=settingsChanged)
@@ -718,9 +751,36 @@ class Backend(QObject):
         """Save a successful scan and redraw the quest lists."""
         entries, other = discordui.match_quests(result.quests, self.catalog.exact)
         quests.save_detected(entries, other)
+        if result.balance is not None and orbs.record(result.balance):
+            self.orbsChanged.emit()
+        self._alert_new(entries, other)
         self._badges_changed()
         self.statusChanged.emit()
         return entries, other
+
+    def _alert_new(self, entries: list[dict], other: list[dict]) -> None:
+        """Tell the user about quests that were not on the page before."""
+        found = [*entries, *other]
+        fresh = set(quests.new_quests([q.get('heading') or q.get('title') or q.get('name') for q in found]))
+        if not fresh or not settings.get('quest_alerts', True):
+            return
+        new = [q for q in found if (q.get('heading') or q.get('title') or q.get('name')) in fresh]
+        names = [q.get('title') or q.get('name') for q in new]
+        total = sum(q.get('orbs') or 0 for q in new)
+        if len(new) == 1:
+            quest = new[0]
+            reward = f'{quest["orbs"]:,} orbs' if quest.get('orbs') else (quest.get('reward') or 'a reward')
+            body = f'{names[0]}: {reward}.'
+            if quest.get('until'):
+                ends = dt.date.fromisoformat(quest['until'])
+                body += f' Ends {ends.month}/{ends.day}.'
+            self.notify.emit('New Discord quest', body)
+        else:
+            body = ', '.join(names[:4]) + (f' and {len(names) - 4} more' if len(names) > 4 else '') + '.'
+            if total:
+                body += f' {total:,} orbs in all.'
+            self.notify.emit(f'{len(new)} new Discord quests', body)
+        self.toast.emit(f'New quest{"s" if len(new) != 1 else ""}: {", ".join(names[:4])}', 'info')
 
     def _on_scan_done(self, result: discordui.Scan, manual: bool) -> None:
         self._detecting = False

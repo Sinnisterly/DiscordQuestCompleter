@@ -10,6 +10,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+from .. import startup
 from ..appdirs import bundled
 from ..catalog import get_catalog
 from .backend import Backend
@@ -55,6 +56,9 @@ class App:
         context.setContextProperty('QuestModel', self.backend.quests)
         context.setContextProperty('SessionModel', self.backend.sessions)
         context.setContextProperty('IconFont', icon_font())
+        # Started by Windows at sign-in: stay in the tray until opened.
+        context.setContextProperty('StartHidden', tray_ok and startup.TRAY_FLAG in sys.argv)
+        startup.refresh()
         self.engine.load(QUrl.fromLocalFile(str(bundled('ui/qml/Main.qml'))))
         if not self.engine.rootObjects():
             raise RuntimeError('The interface failed to load:\n' + '\n'.join(qml_errors[:20]))

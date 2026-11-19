@@ -46,6 +46,7 @@ _CONTROL_TYPES = {
 }
 
 _ENDS_RE = re.compile(r'^\s*Ends\s+(\d{1,2})/(\d{1,2})\s*$', re.IGNORECASE)
+_BALANCE_RE = re.compile(r'orbs balance:\s*([\d,]+)\s*orbs?', re.IGNORECASE)
 _PROGRESS_RE = re.compile(r'progress:\s*(\d{1,3})\s*%', re.IGNORECASE)
 _MINUTES_RE = re.compile(r'\bfor\s+(\d+)\s+minutes?\b', re.IGNORECASE)
 _WIN_RE = re.compile(r'\bwin\s+(.+?)[.!]?\s*$', re.IGNORECASE)
@@ -108,6 +109,7 @@ class Scan:
     quests: list[DetectedQuest]
     ok: bool                      # False when the page could not be read
     reason: str = ''
+    balance: int | None = None    # orbs you hold, from the button at the top
 
 
 # ------------------------------------------------------------------ parsing
@@ -252,7 +254,17 @@ def parse_quests(root: Node, today: dt.date | None = None) -> Scan:
             continue
         seen.add(key)
         out.append(quest)
-    return Scan(out, ok=True)
+    return Scan(out, ok=True, balance=_balance(root))
+
+
+def _balance(root: Node) -> int | None:
+    """The orb balance from the button at the top of the Quests page,
+    named like "Orbs balance: 460 orbs, new Orb challenge updates"."""
+    for node in root.walk():
+        match = _BALANCE_RE.search(node.name)
+        if match:
+            return int(match.group(1).replace(',', ''))
+    return None
 
 
 # ------------------------------------------------------------------ matching

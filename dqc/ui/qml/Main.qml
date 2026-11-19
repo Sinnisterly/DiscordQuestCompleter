@@ -10,7 +10,7 @@ ApplicationWindow {
     height: 760
     minimumWidth: 960
     minimumHeight: 620
-    visible: true
+    visible: !StartHidden
     title: "Discord Quest Completer"
     flags: Qt.Window | Qt.FramelessWindowHint
     color: Theme.c.bg
@@ -99,9 +99,10 @@ ApplicationWindow {
                             QuestsPage {
                                 onOpenGame: function (gameId, name) {
                                     library.showGame(gameId, name)
-                                    win.currentPage = 1
+                                    win.currentPage = 2
                                 }
                             }
+                            OrbsPage {}
                             LibraryPage { id: library }
                             SessionsPage {}
                             ThemesPage {}

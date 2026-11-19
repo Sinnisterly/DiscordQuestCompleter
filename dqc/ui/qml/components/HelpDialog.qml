@@ -22,7 +22,9 @@ Popup {
     readonly property var notes: [
         "Quests under Do these in Discord run inside Discord, so this app cannot do them.",
         "If a quest does not move after a minute or two, press Options and try another executable path.",
-        "With Watch Discord on in Settings, this page updates by itself whenever the Quests page is open."
+        "With Watch Discord on in Settings, this page updates by itself whenever the Quests page is open.",
+        "Turn on Start with Windows and new quest alerts in Settings to hear about new quests without opening the app.",
+        "The Orbs page tracks your balance each time the Quests page is read."
     ]
 
     Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.45) }

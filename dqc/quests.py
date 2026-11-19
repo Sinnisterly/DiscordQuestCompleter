@@ -150,6 +150,29 @@ def save_detected(entries: list[dict], other: list[dict] | None = None) -> bool:
     return _write_json(cache_dir() / DETECTED_NAME, payload)
 
 
+SEEN_NAME = 'seen_quests.json'
+
+
+def new_quests(keys: list[str]) -> list[str]:
+    """Which of these quests have never been seen before, then remember them.
+
+    Keys are the card headings from Discord. The first call ever only takes
+    note of what is on the page and returns nothing, so the first scan does
+    not announce every quest that already existed.
+    """
+    target = data_dir() / SEEN_NAME
+    payload = _read(target)
+    first_time = not isinstance(payload, dict)
+    seen = set(payload.get('seen') or []) if not first_time else set()
+    fresh = [k for k in keys if k and k not in seen]
+    if fresh or first_time:
+        # Old keys are kept for a while so a quest that drops off the page
+        # for one scan is not announced again when it comes back.
+        merged = list(dict.fromkeys([*(payload or {}).get('seen', []), *keys]))[-500:]
+        _write_json(target, {'version': 1, 'seen': merged})
+    return [] if first_time else fresh
+
+
 def _fresh_detected() -> dict:
     """The saved snapshot, or {} when it is too old to trust."""
     payload = _read(cache_dir() / DETECTED_NAME) or {}

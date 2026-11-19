@@ -12,6 +12,7 @@ Rectangle {
 
     readonly property var pages: [
         { label: "Quests", glyph: "" },
+        { label: "Orbs", glyph: "" },
         { label: "Library", glyph: "" },
         { label: "Sessions", glyph: "" },
         { label: "Themes", glyph: "" },

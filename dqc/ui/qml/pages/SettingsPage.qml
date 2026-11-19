@@ -39,6 +39,16 @@ Item {
                         checked: Backend.watchQuests
                         onToggled: function (value) { Backend.watchQuests = value }
                     }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.c.border }
+                    Toggle {
+                        Layout.fillWidth: true
+                        enabled: Backend.trayAvailable
+                        title: "Alert me about new quests"
+                        description: "Shows a Windows notification when a quest appears that was not there before. "
+                                   + "Works with Watch Discord above, or when you press Detect."
+                        checked: Backend.alertsEnabled
+                        onToggled: function (value) { Backend.alertsEnabled = value }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 4
@@ -83,6 +93,15 @@ Item {
                         description: "Shows a Windows notification saying whether it ran the full time."
                         checked: Backend.notifyEnabled
                         onToggled: function (value) { Backend.notifyEnabled = value }
+                    }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.c.border }
+                    Toggle {
+                        Layout.fillWidth: true
+                        title: "Start with Windows"
+                        description: "Opens in the tray when you sign in, so new quests are caught without you starting the app. "
+                                   + "You can also turn this off in Windows Settings under Apps, Startup."
+                        checked: Backend.startWithWindows
+                        onToggled: function (value) { Backend.startWithWindows = value }
                     }
                 }
             }

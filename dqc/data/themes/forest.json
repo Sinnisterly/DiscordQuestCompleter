@@ -1,0 +1,17 @@
+{
+ "name": "Forest",
+ "colors": {
+  "bg": "#121815",
+  "surface": "#18201c",
+  "surfaceHi": "#202b25",
+  "border": "#2b3831",
+  "text": "#e4ece7",
+  "muted": "#8a9a90",
+  "accent": "#3fa66b",
+  "accentHi": "#4fb87b",
+  "good": "#3fa66b",
+  "warn": "#d8a43a",
+  "bad": "#e0504a"
+ },
+ "radius": 10
+}

@@ -12,6 +12,7 @@ import sys
 
 
 def self_test() -> int:
+    import subprocess
     import time
 
     from dqc import emulator, journal, quests, thumbs
@@ -30,11 +31,24 @@ def self_test() -> int:
     stub = bundled('stub.exe')
     out(f'bundled stub  : {stub.is_file()}  ({stub})')
 
+    qml = bundled('ui/qml/Main.qml')
+    out(f'interface     : {qml.is_file()}  ({qml})')
+
+    try:
+        from dqc import discordui
+        discordui._uia()
+        uia = True
+    except Exception as exc:  # noqa: BLE001 - report whatever went wrong
+        uia = False
+        out(f'ui automation : failed ({exc})')
+    else:
+        out('ui automation : True')
+
     catalog = get_catalog()
     verified = [g for g in catalog.games if g.is_verified]
     out(f'catalogue     : {len(catalog.games)} games, {len(verified)} verified')
 
-    ok = bool(catalog.games)
+    ok = bool(catalog.games) and qml.is_file() and uia
     if ok:
         out(f'duration parse: {parse_duration("15m")}s from "15m"')
         out(f'recovered     : {journal.recover() or "nothing pending"}')
@@ -71,6 +85,27 @@ def self_test() -> int:
         cleaned = not plan.root.exists()
         out(f'cleaned up    : {cleaned}')
         ok = ok and cleaned
+
+        # Stopping must end the whole stand-in. The built stub runs as a
+        # launcher plus a child, and ending only the launcher once left the
+        # child running with the game's name.
+        session = emulator.Session(emulator.plan_session(game), seconds=60, quiet='offscreen')
+        session.start()
+        time.sleep(2.0)
+        session.stop()
+        session.wait()
+        time.sleep(0.5)
+        exe = session.plan.exe_path.name.lower()
+        leftover = [
+            line for line in subprocess.run(
+                ['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            ).stdout.lower().splitlines()
+            if line.startswith(f'"{exe}"')
+        ]
+        stopped = not leftover and not session.plan.root.exists()
+        out(f'stop ends all : {stopped}')
+        ok = ok and stopped
     else:
         out('catalogue is empty')
 
@@ -87,8 +122,18 @@ def self_test() -> int:
 def main() -> int:
     if '--self-test' in sys.argv:
         return self_test()
-    from dqc.window import run
-    return run()
+    try:
+        from dqc.ui.app import run
+        return run()
+    except Exception:
+        # A windowed build has no console, so keep the details somewhere.
+        import traceback
+        from dqc.appdirs import data_dir
+        try:
+            (data_dir() / 'error.log').write_text(traceback.format_exc(), encoding='utf-8')
+        except OSError:
+            pass
+        raise
 
 
 if __name__ == '__main__':

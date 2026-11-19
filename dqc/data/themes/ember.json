@@ -1,0 +1,17 @@
+{
+ "name": "Ember",
+ "colors": {
+  "bg": "#18141a",
+  "surface": "#1f1a21",
+  "surfaceHi": "#29222b",
+  "border": "#372d39",
+  "text": "#efe8ec",
+  "muted": "#9a8d96",
+  "accent": "#e2683c",
+  "accentHi": "#ec7a50",
+  "good": "#4caf6a",
+  "warn": "#e3a63b",
+  "bad": "#e44c4c"
+ },
+ "radius": 10
+}

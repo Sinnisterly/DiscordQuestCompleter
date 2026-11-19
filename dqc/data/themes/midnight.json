@@ -1,0 +1,17 @@
+{
+ "name": "Midnight",
+ "colors": {
+  "bg": "#15171d",
+  "surface": "#1b1e26",
+  "surfaceHi": "#232733",
+  "border": "#2c313d",
+  "text": "#e8eaf0",
+  "muted": "#8b91a3",
+  "accent": "#5865f2",
+  "accentHi": "#6b76f5",
+  "good": "#3ba55d",
+  "warn": "#e0a33e",
+  "bad": "#ed4245"
+ },
+ "radius": 10
+}

@@ -1,0 +1,17 @@
+{
+ "name": "Light",
+ "colors": {
+  "bg": "#f4f5f8",
+  "surface": "#ffffff",
+  "surfaceHi": "#eceef3",
+  "border": "#d9dce4",
+  "text": "#1d2027",
+  "muted": "#646b7d",
+  "accent": "#4f5bd5",
+  "accentHi": "#5f6ae0",
+  "good": "#2b8a4b",
+  "warn": "#b7791f",
+  "bad": "#d43c3f"
+ },
+ "radius": 10
+}

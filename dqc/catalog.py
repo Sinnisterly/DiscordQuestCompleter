@@ -57,8 +57,15 @@ class Game:
     requires: str | None = None
     requires_url: str | None = None
 
-    # Filled in from the active-quest list, which is usually empty.
+    # Filled in from the quest sources by Catalog.apply_quests().
     quest_reward: str | None = None
+    quest_orbs: int | None = None     # None for item rewards or unknown
+    quest_title: str | None = None    # e.g. "Illegal Soccer on Roblox" for Roblox
+    quest_accepted: bool | None = None  # None when not read from Discord
+    quest_heading: str | None = None
+    quest_progress: int | None = None   # percent, read from Discord
+    quest_ends: str | None = None     # ISO date, when known
+    quest_source: str | None = None   # 'discord', 'shared' or 'marked'
     has_quest: bool = False
 
     @property
@@ -154,6 +161,20 @@ def _game_from_override(entry: dict) -> Game:
     )
 
 
+def _apply(games: list[Game], active: dict) -> None:
+    for game in games:
+        quest = active.get(game.name.lower())
+        game.has_quest = quest is not None
+        game.quest_reward = quest.reward if quest else None
+        game.quest_orbs = quest.orbs if quest else None
+        game.quest_title = quest.title if quest else None
+        game.quest_accepted = quest.accepted if quest else None
+        game.quest_heading = quest.heading if quest else None
+        game.quest_progress = quest.progress if quest else None
+        game.quest_ends = quest.until.isoformat() if quest and quest.until else None
+        game.quest_source = quest.source if quest else None
+
+
 def _read_snapshot(path: Path) -> dict | None:
     try:
         if path.suffix == '.gz':
@@ -171,6 +192,7 @@ class Catalog:
         self.games: list[Game] = []
         self.generated: int = 0
         self._by_norm: dict[str, Game] = {}
+        self._by_id: dict[str, Game] = {}
         self._lock = threading.Lock()
 
     # -- loading ---------------------------------------------------------
@@ -195,7 +217,6 @@ class Catalog:
             return
 
         overrides = _load_overrides()
-        active = quests.load()
         matched: set[str] = set()
         games = []
         for raw in payload.get('games') or []:
@@ -230,19 +251,33 @@ class Catalog:
             if key not in matched:
                 games.append(_game_from_override(entry))
 
+        by_norm: dict[str, Game] = {}
         for game in games:
-            quest = active.get(game.name.lower())
-            if quest is not None:
-                game.has_quest = True
-                game.quest_reward = quest.reward
+            for name in (game.name, *game.aliases):
+                by_norm.setdefault(normalise(name), game)
 
+        _apply(games, quests.load())
+
+        # One swap, so a reader on another thread never sees the new list
+        # paired with the old index.
+        by_id = {game.id: game for game in games}
         with self._lock:
-            self.games = games
+            self.games, self._by_norm, self._by_id = games, by_norm, by_id
             self.generated = int(payload.get('generated') or 0)
-            self._by_norm = {}
-            for game in games:
-                for name in (game.name, *game.aliases):
-                    self._by_norm.setdefault(normalise(name), game)
+
+    def apply_quests(self) -> None:
+        """Re-read every quest source and update the badges in place.
+
+        Cheap compared to load(), so it runs after a detection or a manual
+        mark without re-reading the whole catalogue.
+        """
+        _apply(self.games, quests.load())
+
+    def quest_games(self) -> list[Game]:
+        """Games with a live quest, soonest ending first."""
+        live = [g for g in self.games if g.has_quest]
+        live.sort(key=lambda g: (g.quest_ends or '9999', g.name.lower()))
+        return live
 
     @property
     def is_stale(self) -> bool:
@@ -303,6 +338,9 @@ class Catalog:
 
     # -- lookup ----------------------------------------------------------
 
+    def by_id(self, game_id: str) -> Game | None:
+        return self._by_id.get(game_id)
+
     def exact(self, name: str) -> Game | None:
         return self._by_norm.get(normalise(name))
 
@@ -315,9 +353,10 @@ class Catalog:
         Arrowhead' and 'Summoners War' onto 'N++'.
         """
         query = (query or '').strip()
+        games = self.games  # one reference for the whole search
         if not query:
             # No query: community-verified titles, live quests at the top.
-            verified = [g for g in self.games if g.is_verified or g.has_quest]
+            verified = [g for g in games if g.is_verified or g.has_quest]
             verified.sort(key=lambda g: (not g.has_quest, g.name.lower()))
             return verified[:limit]
 
@@ -329,7 +368,7 @@ class Catalog:
         tok_q = tokens(query)
         results: list[tuple[float, Game]] = []
 
-        for game in self.games:
+        for game in games:
             best = 0.0
             for candidate in (game.name, *game.aliases):
                 norm_c = normalise(candidate)

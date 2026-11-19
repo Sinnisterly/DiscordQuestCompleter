@@ -17,7 +17,9 @@ import ast
 import operator
 import re
 
-DEFAULT_SECONDS = 900
+# 15m30s rather than a flat 15m: Discord and the stand-in take a few seconds
+# to sync, and a quest asking for 15 minutes can otherwise fall just short.
+DEFAULT_SECONDS = 930
 MAX_SECONDS = 24 * 60 * 60
 
 _BIN_OPS = {

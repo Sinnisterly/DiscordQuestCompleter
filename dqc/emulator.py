@@ -12,6 +12,7 @@ Steam-created folders. It is opt-in and refuses to touch an existing install.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import secrets
@@ -19,6 +20,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -226,8 +228,13 @@ def provision_stub(target: Path) -> list[Path]:
 
 def _stub_command(
     target: Path, seconds: int, title: str, icon: Path | None = None,
+    theme: dict | None = None, quiet: str | None = None,
 ) -> tuple[list[str], dict]:
     env = os.environ.copy()
+    if theme:
+        env['DQC_STUB_THEME'] = json.dumps(theme)
+    if quiet:
+        env['DQC_STUB_QUIET'] = quiet
     extra = [str(icon)] if icon else []
 
     if is_frozen():
@@ -240,15 +247,92 @@ def _stub_command(
     return [str(target), str(script), str(seconds), title, *extra], env
 
 
+class GroupWindow:
+    """One countdown window for several sessions launched together.
+
+    It is not a game. It runs the stub from where it is bundled, not from an
+    emulated folder, so Discord never sees it, and it creates no files.
+    """
+
+    def __init__(self, names: list[str], seconds: int, theme: dict | None = None):
+        self.names = names
+        self.seconds = seconds
+        self.theme = theme
+        self.process: subprocess.Popen | None = None
+
+    def start(self) -> None:
+        env = os.environ.copy()
+        env['DQC_STUB_GROUP'] = json.dumps(self.names)
+        if self.theme:
+            env['DQC_STUB_THEME'] = json.dumps(self.theme)
+        if is_frozen():
+            command = [str(bundled('stub.exe')), '--group', str(self.seconds)]
+        else:
+            script = Path(__file__).resolve().parent / 'stub.py'
+            command = [sys.executable, str(script), '--group', str(self.seconds)]
+        try:
+            self.process = subprocess.Popen(
+                command, env=env, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+        except OSError as exc:
+            raise EmulationError(f'Could not open the countdown window: {exc}') from exc
+
+    def wait(self) -> None:
+        if self.process is not None:
+            self.process.wait()
+
+    def stop(self) -> None:
+        if self.process is not None:
+            end_tree(self.process)
+
+    @property
+    def is_running(self) -> bool:
+        return self.process is not None and self.process.poll() is None
+
+
+def end_tree(process: subprocess.Popen, timeout: float = 5) -> None:
+    """End a stub process and anything it started.
+
+    The built stub is a single-file executable, which runs as two processes:
+    a small launcher, and the real program as its child. Ending only the
+    launcher leaves the child running, still holding the stand-in's name, so
+    the whole tree is ended.
+    """
+    if process.poll() is not None:
+        return
+    try:
+        if sys.platform == 'win32':
+            subprocess.run(
+                ['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                capture_output=True, timeout=timeout,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+        else:
+            process.terminate()
+        process.wait(timeout=timeout)
+    except (OSError, subprocess.SubprocessError):
+        try:
+            process.kill()
+        except OSError:
+            pass
+
+
 # ----------------------------------------------------------------- session
 
 class Session:
     """A running emulation. Cleans up exactly once, however it ends."""
 
-    def __init__(self, plan: Plan, seconds: int, icon: Path | None = None):
+    def __init__(
+        self, plan: Plan, seconds: int, icon: Path | None = None,
+        theme: dict | None = None, quiet: str | None = None,
+    ):
         self.plan = plan
         self.seconds = seconds
         self.icon = icon
+        self.theme = theme    # colors for the countdown window
+        # 'offscreen' or 'minimized': a window Discord can see but you do
+        # not, while a GroupWindow shows the countdown. None: the normal one.
+        self.quiet = quiet
         self.process: subprocess.Popen | None = None
         self.entry: journal.Entry | None = None
         self._created: list[Path] = []
@@ -303,7 +387,8 @@ class Session:
             raise EmulationError(f'Could not place the stand-in executable: {exc}') from exc
 
         command, env = _stub_command(
-            plan.exe_path, self.seconds, plan.game.name, self.icon,
+            plan.exe_path, self.seconds, plan.game.name, self.icon, self.theme,
+            quiet=self.quiet,
         )
         try:
             self.process = subprocess.Popen(
@@ -332,14 +417,7 @@ class Session:
         if process is None or process.poll() is not None:
             self._cleanup()
             return
-        try:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-        except OSError:
-            pass
+        end_tree(process)
 
     @property
     def is_running(self) -> bool:
@@ -351,6 +429,27 @@ class Session:
                 return
             self._cleaned.set()
 
+        # A file can stay locked for a moment after its process exits, so try
+        # twice. If it still fails, keep the journal entry: the next start of
+        # the app finishes the job instead of forgetting it.
+        for attempt in range(2):
+            self._undo()
+            if self._undone():
+                if self.entry is not None:
+                    journal.clear(self.entry.id)
+                return
+            if attempt == 0:
+                time.sleep(1.5)
+
+    def _undone(self) -> bool:
+        plan = self.plan
+        if plan.mode == INSTALLED:
+            return plan.backup is None or not plan.backup.exists()
+        if plan.mode == STEAM:
+            return not plan.exe_path.exists()
+        return plan.root is None or not plan.root.exists()
+
+    def _undo(self) -> None:
         plan = self.plan
         try:
             if plan.mode == INSTALLED:
@@ -372,9 +471,6 @@ class Session:
                 shutil.rmtree(plan.root, ignore_errors=True)
         except OSError:
             pass
-
-        if self.entry is not None:
-            journal.clear(self.entry.id)
 
 
 def _prune_empty(leaf: Path, stop: Path) -> None:

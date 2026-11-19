@@ -2,7 +2,7 @@
 
 Completes the "play a game" type of Discord quest without installing the game.
 
-![The main window, showing the game list, the selected game and its resolved path](docs/showcase.png)
+![The Quests page, showing quests read from Discord with their orb rewards and end dates](docs/showcase.png)
 
 Discord decides which game you are playing by looking at the executable of each
 running process. It keeps a public list of every game it can recognise, and for
@@ -43,23 +43,47 @@ python run.py
 
 ## Using it
 
-1. Search for the game the quest asks for. The list opens on the games with
-   community-confirmed paths; typing searches all 10,000 or so that Discord
-   knows about.
-2. Set how long to run it for. Leave the field empty for 15 minutes. It
-   understands `20m`, `1h30m`, `25:00`, plain seconds like `900`, and
-   arithmetic like `10 * 60`.
-3. Press Launch. A small window appears with a countdown. Leave it open, and
-   check the quest in Discord after a minute to confirm the progress is moving.
+The window has five pages, listed on the left.
 
-The countdown window carries the game's own icon and name, so it reads as the
-game rather than as a generic window. This is cosmetic only. Discord identifies
-a game by its executable path and never looks at the icon.
+**Quests.** Open Discord and click **Quests** in its left sidebar. Back in
+this app, press **Detect from Discord**. Every unfinished "play a game"
+quest shows up as a card with its reward and end date. Press **Launch** on a
+card to run it for the default 15 minutes 30 seconds with the best known
+path. **Options** opens the game in the Library page. **Help** shows these
+steps in the app.
+
+**Launch all** runs every quest on the page at the same time. Discord
+counts several games at once, so they all progress together. Any quest you
+have not accepted yet is accepted for you first, as long as Discord's Quests
+page is open. Where Discord asks which platform you will play on, Desktop is
+picked. Each game runs its own stand-in, since Discord detects each one.
+Discord only counts a game that has a window, so each stand-in has a tiny one
+parked off-screen, and one countdown window covers the whole group. **Stop all** in that window ends every game
+in it. Games that need extra steps, such as a real Steam install, are left
+out and named, so you can launch them on their own.
+
+**Library.** Search all 10,000 or so games Discord knows about. The list
+opens on the games with community-confirmed paths. Pick one to choose its
+executable path, placement and duration, then press **Launch**.
+
+The duration field takes `20m`, `1h30m`, `25:00`, plain seconds like `900`,
+and arithmetic like `10 * 60`. Leave it empty for 15 minutes 30 seconds. The
+extra 30 seconds covers the time Discord and the stand-in take to sync.
+
+**Sessions.** Running sessions with their progress and a **Stop** button.
+
+**Themes** and **Settings** are covered below.
+
+Each session opens a small countdown window. Leave it open, and check the
+quest in Discord after a minute to confirm the progress is moving. The
+countdown window carries the game's own icon and name and uses your theme's
+colors. This is cosmetic only. Discord identifies a game by its executable
+path and never looks at the icon.
 
 Closing the countdown window only minimises it to the taskbar. The session
-keeps running, because that window is the process Discord is watching. To end a
-session early, press **Stop**, either in the countdown window or next to the
-session in the main window.
+keeps running, because that window is the process Discord is watching. To end
+a session early, press **Stop**, either in the countdown window or on the
+Sessions page.
 
 Everything the program created is removed when the session ends, whether it
 finishes, you stop it, or the program is killed partway through.
@@ -72,8 +96,8 @@ and its menu reopens the window or quits properly. Quitting does stop running
 sessions, and asks first.
 
 When a session ends you get a notification saying whether it ran the full
-duration or was stopped early. Both behaviours have checkboxes under the
-session list and can be turned off. If your desktop has no system tray, the
+duration or was stopped early. Both can be turned off on the Settings
+page. If your desktop has no system tray, the
 window closes normally and the option is disabled.
 
 ### If the quest does not progress
@@ -84,9 +108,9 @@ lists every path known for that game, with community-confirmed ones marked
 
 If that does not help, work down the **Placement** options. They differ only in
 where the stand-in is put: `Sandbox` uses the app's own folder and suits most
-games, `Inside Steam library` writes into your real `steamapps\common` for
-games that check their folder came from Steam, and `Replace installed copy`
-stands in for the real executable of a game you have actually installed.
+games, `Steam library` writes into your real `steamapps\common` for games
+that check their folder came from Steam, and `Replace install` stands in for
+the real executable of a game you have actually installed.
 
 ### Games that need the Steam version installed
 
@@ -103,8 +127,8 @@ What works:
 
 1. Install the game or demo from Steam. It has to finish. Pausing the download
    at one or two percent is **not** enough for these, whatever older guides say.
-2. Select the game here. **Replace installed copy** is chosen automatically once
-   the install is detected, and the dropdown names the folder it found.
+2. Select the game here. **Replace install** is chosen automatically once the
+   install is detected, and the dropdown names the folder it found.
 3. Press Launch and leave the countdown running.
 
 While the session runs, the real executable is renamed with a `.dqc-backup`
@@ -148,8 +172,8 @@ That directory holds the fake game folders while a session runs, the cached
 game list, and cached thumbnails. Administrator rights are not needed.
 
 The other two placement modes are the exceptions, and both ask first.
-`Inside Steam library` creates folders in your real `steamapps\common` and
-refuses to run if you already own the game in question. `Replace installed copy`
+`Steam library` placement creates folders in your real `steamapps\common` and
+refuses to run if you already own the game in question. `Replace install`
 renames one real executable for the length of the session and puts it back
 afterwards.
 
@@ -157,27 +181,71 @@ Every change is written to a journal before it happens, so a crash, a power cut
 or a killed process is undone the next time the program starts. A displaced
 executable is always restored before anything else is tidied up.
 
-## Marking quests as live
+## Finding your quests
 
-The program cannot read your active quests, because that would require your
-Discord account token. A token grants full control of the account, and a tool
-that reads one has no way to prove it is not stealing it, so it is not
-something this program will ever ask for.
+The program never asks for your Discord account token. A token grants full
+control of the account, and a tool that reads one has no way to prove it is
+not stealing it.
 
-Instead, press **Mark quest running** on a game. It is badged `QUEST LIVE` and
-sorted to the top of the list until you unmark it. The marks are yours alone
-and are kept in `my_quests.json` in the application data folder.
+Instead it reads the Quests page the same way a screen reader does. Discord's
+desktop app exposes what it draws to Windows accessibility (UI Automation),
+so when the Quests page is open, every card is there as plain text: "Play
+Delta Force for 15 minutes and win 840 Orbs". The program reads the game
+name, reward and end date from that text. Nothing is sent anywhere, and no
+login is involved.
+
+- **Detect from Discord** on the Quests page reads it once.
+- **Watch Discord for quests** in Settings (on by default) checks every 10
+  seconds whether the Quests page is open, and reads it when it is, at most
+  once a minute. Checking only looks at window titles, so it costs nothing
+  while the page is closed.
+
+Once a quest has started, its card also shows the progress Discord reports,
+read from the same page, and says when it is done and ready to claim. While
+games are running the page is read every 20 seconds so this keeps up.
+
+Each card shows how many orbs the quest pays, and the page header adds up the
+orbs on offer. Quests that reward an in-game item instead of orbs name the
+item and say "no orbs".
+
+"Play" quests become cards you can launch. A quest for a game on a platform,
+such as "Illegal Soccer on Roblox", runs the platform itself, since that is
+what Discord counts.
+
+Quests with a **Launch Quest** button in Discord are activities that run
+inside Discord, so there is nothing for this app to stand in for. They are
+listed under "Do these in Discord" with their orbs, so you can see everything
+on offer in one place. Video quests and completed quests are left out.
+
+If a Discord update changes the page, detection finds nothing and says so.
+You can still mark quests by hand: pick a game in the Library and press
+**Mark quest**. Marked games are kept in `my_quests.json` in the application
+data folder.
 
 There is also a shared list, `dqc/data/active_quests.json`, for anyone
 maintaining a fork or a group of users. Point its `remote` field at a hosted
-copy and the app will pull updates without a new release. It ships empty, since
-a quest list that has gone stale is worse than none at all.
+copy and the app pulls updates without a new release. It ships empty.
+
+## Themes
+
+The Themes page has six built-in themes: Midnight, Light, OLED Black, Forest,
+Ember and Ocean. Click one to switch.
+
+Any color can be changed in the editor below the themes, either by clicking
+the swatch or by typing a hex value. Changes show immediately. Press **Save
+theme** with a name to keep them. Built-in themes cannot be overwritten, so
+save under a new name.
+
+Saved themes are small JSON files in the `themes` folder of the application
+data folder. **Export** writes the current theme to a file you can share, and
+**Import** adds one.
 
 ## Building
 
 ```
 python tools/build_snapshot.py   # refresh the bundled game list
 python tools/make_icon.py        # regenerate the icon, only after changing it
+python tools/make_showcase.py    # redraw docs/showcase.png after changing the interface
 python build.py                  # produce dist/DiscordQuestCompleter.exe
 ```
 
@@ -189,7 +257,7 @@ own executable open.
 Two executables are produced. `stub.exe` is the placeholder that gets copied
 into the fake game folder, built separately so it stays around 11 MB rather
 than carrying the whole interface with it. `DiscordQuestCompleter.exe` bundles
-it along with the game data.
+it along with the game data and the QML interface files.
 
 To check a build:
 
@@ -205,21 +273,24 @@ This runs a full session without opening the interface and writes the result to
 ```
 dqc/
   catalog.py    game list, search, community overrides
+  discordui.py  reads quests from the Discord window
   emulator.py   builds the folder structure, runs and cleans up the placeholder
   journal.py    records changes before they happen so a crash can be undone
-  quests.py     the active-quest list
+  quests.py     quest sources: detected, shared and marked
+  themes.py     theme files: presets, saving, import and export
   settings.py   user preferences
   steamlibs.py  finds Steam libraries, used to avoid games you own
   duration.py   reads the duration field
   thumbs.py     artwork from Steam and Discord, cached to disk
   stub.py       the placeholder program
-  window.py     the interface
+  ui/           the interface: Python bridge objects and QML pages
 tools/          data builder and check scripts
 ```
 
-The check scripts under `tools/` verify the game list, the emulation and
-cleanup cycle, the interface, and that closing the countdown window leaves the
-session running. Run them after changing anything.
+The check scripts under `tools/` verify the game list, the catalogue refresh,
+quest detection against a saved copy of the Quests page, themes, the
+emulation and cleanup cycle, the interface, and that closing the countdown
+window leaves the session running. Run them after changing anything.
 
 ## Contributing paths
 

@@ -1,0 +1,17 @@
+{
+ "name": "OLED Black",
+ "colors": {
+  "bg": "#000000",
+  "surface": "#0b0b0d",
+  "surfaceHi": "#16171b",
+  "border": "#24262c",
+  "text": "#eceef2",
+  "muted": "#868b99",
+  "accent": "#5865f2",
+  "accentHi": "#6b76f5",
+  "good": "#3ba55d",
+  "warn": "#e0a33e",
+  "bad": "#ed4245"
+ },
+ "radius": 10
+}

@@ -5,12 +5,16 @@ so it is what Discord sees running. It uses only the standard library (tkinter)
 to keep the frozen build small and its startup fast.
 
     stub.exe <seconds> [window title] [icon png]
+    stub.exe --group <seconds>          (game names in DQC_STUB_GROUP)
 
-Draws a small always-on-top window with a countdown. Closing it ends the
-session early; the parent app notices the exit and cleans up.
+Draws a small always-on-top window with a countdown. Stop ends the session
+early; the parent app notices the exit and cleans up. With DQC_STUB_QUIET set
+it keeps a window Discord can see but out of your way, for games launched as
+a group, and --group draws the one shared countdown for that group.
 """
 
 import ctypes
+import json
 import os
 import sys
 import time
@@ -23,6 +27,38 @@ BORDER = '#3a3e4a'
 FG = '#e6e8ee'
 MUTED = '#8b90a0'
 ACCENT = '#5865f2'
+
+# Matches dqc.duration.DEFAULT_SECONDS. This file is built as a standalone
+# executable and cannot import from the package.
+DEFAULT_SECONDS = 930
+
+
+def _apply_theme() -> None:
+    """Use the main app's theme colors when it passes them.
+
+    They arrive as JSON in the DQC_STUB_THEME environment variable. Anything
+    missing or malformed keeps the built-in palette.
+    """
+    global BG, SURFACE, BORDER, FG, MUTED, ACCENT
+    try:
+        colors = json.loads(os.environ.get('DQC_STUB_THEME') or '{}')
+    except ValueError:
+        return
+    if not isinstance(colors, dict):
+        return
+
+    def pick(key, current):
+        value = colors.get(key)
+        if isinstance(value, str) and len(value) == 7 and value.startswith('#'):
+            return value
+        return current
+
+    BG = pick('bg', BG)
+    SURFACE = pick('surfaceHi', SURFACE)
+    BORDER = pick('border', BORDER)
+    FG = pick('text', FG)
+    MUTED = pick('muted', MUTED)
+    ACCENT = pick('accent', ACCENT)
 
 
 def dark_titlebar(root: tk.Tk) -> bool:
@@ -63,7 +99,10 @@ def human(seconds: float) -> str:
 
 
 class Stub:
-    def __init__(self, total: int, title: str, icon_path: str | None = None):
+    def __init__(
+        self, total: int, title: str, icon_path: str | None = None,
+        subtitle: str = 'Emulating game activity for Discord', stop_text: str = 'Stop',
+    ):
         self.total = max(1, total)
         self.started = time.monotonic()
         # Tk drops images that are not referenced from Python.
@@ -102,8 +141,9 @@ class Stub:
         ).pack(fill='x')
 
         tk.Label(
-            titles, text='Emulating game activity for Discord',
-            bg=BG, fg=MUTED, font=('Segoe UI', 9), anchor='w',
+            titles, text=subtitle,
+            bg=BG, fg=MUTED, font=('Segoe UI', 9), anchor='w', justify='left',
+            wraplength=320,
         ).pack(fill='x', pady=(2, 0))
 
         style = ttk.Style(self.root)
@@ -113,7 +153,7 @@ class Stub:
             pass
         style.configure(
             'Stub.Horizontal.TProgressbar',
-            troughcolor='#2a2d36', background=ACCENT,
+            troughcolor=SURFACE, background=ACCENT,
             bordercolor=BG, lightcolor=ACCENT, darkcolor=ACCENT,
             thickness=8,
         )
@@ -143,7 +183,7 @@ class Stub:
         ).pack(side='left')
 
         tk.Button(
-            footer, text='Stop', command=self.stop,
+            footer, text=stop_text, command=self.stop,
             bg=SURFACE, fg=FG, activebackground=BORDER, activeforeground=FG,
             relief='flat', borderwidth=0, padx=14, pady=3,
             font=('Segoe UI', 9), cursor='hand2',
@@ -210,12 +250,62 @@ class Stub:
         self.root.mainloop()
 
 
-def main(argv: list[str]) -> int:
+def run_quiet(total: int, title: str, mode: str) -> None:
+    """Stay running for the duration without a countdown of its own.
+
+    Used when several games launch together. Discord only counts a game
+    process that owns a visible window, so each stand-in still has one, just
+    out of the way. One group window shows the countdown for all of them.
+
+    mode 'offscreen': a 1x1 tool window parked off-screen, no taskbar button.
+    mode 'minimized': a normal window, minimized to the taskbar.
+    """
+    root = tk.Tk()
+    root.title(title)
+    if mode == 'offscreen':
+        root.attributes('-toolwindow', True)
+        root.geometry('1x1+-32000+-32000')
+    else:
+        root.geometry('1x1')
+        root.iconify()
+    root.protocol('WM_DELETE_WINDOW', lambda: None)
+    root.after(int(total * 1000), root.destroy)
+    root.mainloop()
+
+
+def _seconds(text: str) -> int:
     try:
-        total = int(float(argv[1])) if len(argv) > 1 else 900
+        return int(float(text))
     except ValueError:
-        total = 900
+        return DEFAULT_SECONDS
+
+
+def main(argv: list[str]) -> int:
+    _apply_theme()
+
+    # stub --group <seconds>: one countdown for several games. The game names
+    # come as a JSON list in DQC_STUB_GROUP. This process is not a game; it
+    # is only the window. Closing it with Stop ends the whole group.
+    if len(argv) > 1 and argv[1] == '--group':
+        total = _seconds(argv[2]) if len(argv) > 2 else DEFAULT_SECONDS
+        try:
+            names = [str(n) for n in json.loads(os.environ.get('DQC_STUB_GROUP') or '[]')]
+        except ValueError:
+            names = []
+        count = len(names)
+        Stub(
+            total, f'{count} game{"s" if count != 1 else ""} running',
+            subtitle=', '.join(names) or 'Emulating game activity for Discord',
+            stop_text='Stop all',
+        ).run()
+        return 0
+
+    total = _seconds(argv[1]) if len(argv) > 1 else DEFAULT_SECONDS
     title = argv[2] if len(argv) > 2 else 'Game'
+    quiet = os.environ.get('DQC_STUB_QUIET')
+    if quiet:
+        run_quiet(total, title, quiet)
+        return 0
     icon = argv[3] if len(argv) > 3 else None
     Stub(total, title, icon).run()
     return 0

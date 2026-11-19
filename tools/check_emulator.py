@@ -13,6 +13,7 @@ from dqc.duration import parse_duration      # noqa: E402
 print('-- duration parsing')
 for text in ['', '900', '15m', '1h30m', '25:00', '10 * 60', '(3 * 60) + 20']:
     print(f'   {text!r:16s} -> {parse_duration(text)}s')
+assert parse_duration('') == 930, 'blank input should default to 15m30s'
 for bad in ['abc', '__import__("os")', '-5', '99h']:
     try:
         parse_duration(bad)

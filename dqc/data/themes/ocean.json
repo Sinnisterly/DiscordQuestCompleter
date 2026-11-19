@@ -1,0 +1,17 @@
+{
+ "name": "Ocean",
+ "colors": {
+  "bg": "#0f1620",
+  "surface": "#141d29",
+  "surfaceHi": "#1b2735",
+  "border": "#253346",
+  "text": "#e3eaf3",
+  "muted": "#8796aa",
+  "accent": "#2f8fdc",
+  "accentHi": "#45a0e6",
+  "good": "#3aa771",
+  "warn": "#e0a33e",
+  "bad": "#e5484d"
+ },
+ "radius": 10
+}

@@ -85,7 +85,7 @@
       "name": "Shift at Midnight",
       "path": "Shift At Midnight Demo/ShiftAtMidnight.exe",
       "standalone": true,
-      "requires": "Install the Steam demo, then use Replace installed copy. Confirmed working. A sandbox does not register for this one, and pausing the download early is not enough.",
+      "requires": "Install the Steam demo, then use Replace install. Confirmed working. A sandbox does not register for this one, and pausing the download early is not enough.",
       "requires_url": "https://store.steampowered.com/app/4050060/"
     },
     { "name": "skate.", "path": "skate/skate.exe" },
@@ -93,7 +93,7 @@
     {
       "name": "Storm Lancers",
       "path": "Storm Lancers Demo/StormLancersDemo.exe",
-      "requires": "The community index reports this one needs the Steam demo installed. If a sandbox does not register, install the demo and use Replace installed copy.",
+      "requires": "The community index reports this one needs the Steam demo installed. If a sandbox does not register, install the demo and use Replace install.",
       "requires_url": "https://store.steampowered.com/app/4046570/"
     },
     {

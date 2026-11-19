@@ -1,4 +1,10 @@
-"""Construct the window offscreen and exercise its interactions."""
+"""Load the QML interface offscreen and exercise the backend behind it.
+
+    python tools/check_ui.py [screenshot folder]
+
+Fails on any QML warning or error. With a folder, saves a screenshot of every
+page there (run without QT_QPA_PLATFORM=offscreen for real fonts).
+"""
 
 import os
 import sys
@@ -6,71 +12,95 @@ from pathlib import Path
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# Console here is not UTF-8; keep the check readable regardless of codepage.
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-from PySide6.QtCore import Qt                                  # noqa: E402
-from PySide6.QtWidgets import QApplication, QSystemTrayIcon    # noqa: E402
+from PySide6.QtCore import QEventLoop, QTimer, qInstallMessageHandler  # noqa: E402
 
-from dqc import settings, winchrome          # noqa: E402
-from dqc.theme import STYLESHEET             # noqa: E402
-from dqc.window import MainWindow            # noqa: E402
+messages: list[str] = []
+qInstallMessageHandler(lambda _mode, _ctx, msg: messages.append(msg))
 
-app = QApplication([])
-app.setStyleSheet(STYLESHEET)
+from PySide6.QtQuickControls2 import QQuickStyle  # noqa: E402
+from PySide6.QtWidgets import QApplication        # noqa: E402
 
-window = MainWindow()
-window.show()
-print(f'window built: {window.windowTitle()}')
-print(f'default list : {window.results.count()} rows')
-print(f'selected     : {window.selected.name if window.selected else None}')
-print(f'resolved     : {window.resolved.text()}')
-print(f'duration hint: {window.duration_hint.text()}')
-print(f'launch enabled: {window.launch.isEnabled()}')
+QQuickStyle.setStyle('Basic')
+qt = QApplication([])
 
-for query in ['zzz', 'valorant', 'opera', 'qqqqqq']:
-    window.search.setText(query)
-    top = window.selected.name if window.selected else None
-    print(f'  search {query!r:10s} -> {window.results.count():3d} rows, top={top!r}')
+from dqc import settings          # noqa: E402
+from dqc.ui.app import App        # noqa: E402
 
-window.search.setText('where winds')
-print(f'\npaths offered: {[window.path_box.itemText(i) for i in range(window.path_box.count())]}')
+failures: list[str] = []
 
-window.duration.setText('bogus')
-print(f'bad duration : {window.duration_hint.text()}')
-window.duration.setText('20m')
-print(f'good duration: {window.duration_hint.text()}')
 
-window.placement.setCurrentIndex(1)
-print(f'steam mode   : {window.resolved.text()}')
-window.placement.setCurrentIndex(0)
-print(f'sandbox mode : {window.resolved.text()}')
+def wait(ms: int) -> None:
+    loop = QEventLoop()
+    QTimer.singleShot(ms, loop.quit)
+    loop.exec()
 
-print(f'\nh-scrollbar off: {window.results.horizontalScrollBarPolicy() == Qt.ScrollBarAlwaysOff}')
-print(f'dark titlebar  : {winchrome.apply_dark_titlebar(window)}')
 
-print('\ntray and notifications:')
-print(f'  tray available : {QSystemTrayIcon.isSystemTrayAvailable()}')
-print(f'  tray created   : {window.tray is not None}')
-print(f'  hides to tray  : {window._hides_to_tray()}')
-print(f'  quest button   : {window.quest_button.text()!r}')
+def check(label: str, ok: bool, detail='') -> None:
+    print(f'  {"ok  " if ok else "FAIL"} {label}{f": {detail}" if detail else ""}')
+    if not ok:
+        failures.append(label)
 
-# Both toggles must survive a round trip through the settings file.
+
 before = dict(settings.load())
-window.notify_check.setChecked(False)
-window.tray_check.setChecked(False)
-print(f'  notify off     : {settings.get("notify_on_finish") is False}')
-print(f'  tray off       : {settings.get("minimise_to_tray") is False}')
-print(f'  hides now      : {window._hides_to_tray()}')
-window.notify_check.setChecked(bool(before.get('notify_on_finish', True)))
-window.tray_check.setChecked(bool(before.get('minimise_to_tray', True)))
-print(f'  restored       : {settings.load() == before}')
+app = App(qt)
+backend, window = app.backend, app.window
+wait(800)
 
-# With notifications off, _notify must be a no-op rather than raising.
-window.settings['notify_on_finish'] = False
-window._notify('should not appear', 'suppressed')
-print('  suppressed ok  : True')
+print('window')
+check('loaded', window is not None)
+check('frameless title', window.property('title') == 'Discord Quest Completer')
 
-window.loader.shutdown()
-print('\nOK')
+print('library')
+check('default list has games', backend.library.rowCount() > 0, backend.library.rowCount())
+for query, expect in [('zzz', 'Zenless Zone Zero'), ('where winds', 'Where Winds Meet')]:
+    backend.search(query)
+    top = backend.catalog.by_id(backend.library.idAt(0))
+    check(f'search {query!r}', top is not None and top.name == expect, top.name if top else None)
+backend.search('qqqqqq')
+check('nonsense search is empty', backend.library.rowCount() == 0)
+
+game = backend.catalog.exact('Where Winds Meet')
+detail = backend.gameDetail(game.id)
+check('detail has paths', len(detail['paths']) > 0)
+check('detail has three placements', len(detail['placements']) == 3)
+plan = backend.planPath(game.id, detail['paths'][0]['path'], 'sandbox')
+check('sandbox plan resolves', plan['ok'], plan['text'])
+
+print('duration')
+check('blank is 15m 30s', backend.durationHint('')['text'] == 'Runs for 15m 30s (default)',
+      backend.durationHint('')['text'])
+check('20m accepted', backend.durationHint('20m')['ok'])
+check('bogus rejected', not backend.durationHint('bogus')['ok'])
+
+print('pages and themes')
+pages = sys.argv[1] if len(sys.argv) > 1 else None
+for index in range(5):
+    window.setProperty('currentPage', index)
+    wait(400)
+    if pages:
+        window.grabWindow().save(os.path.join(pages, f'page{index}.png'))
+original = app.theme.name
+for name in ('Light', 'OLED Black', original):
+    app.theme.apply(name)
+    wait(150)
+check('theme switch', app.theme.name == original)
+
+print('settings')
+backend.notifyEnabled = False
+backend.watchQuests = False
+check('notify off saved', settings.get('notify_on_finish') is False)
+check('watch off saved', settings.get('watch_quests') is False)
+for key, value in before.items():
+    settings.set_value(key, value)
+if 'watch_quests' not in before:
+    settings.set_value('watch_quests', True)
+
+noise = [m for m in messages if 'Cannot find font directory' not in m and 'no longer ships fonts' not in m]
+print('qml messages')
+check('no QML warnings', not noise, '\n    '.join(noise[:10]))
+
+app.art.shutdown()
+print('\nFAIL' if failures else '\nOK')
+sys.exit(1 if failures else 0)

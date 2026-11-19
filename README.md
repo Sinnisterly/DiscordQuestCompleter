@@ -48,18 +48,22 @@ The window has six pages, listed on the left.
 **Quests.** Open Discord and click **Quests** in its left sidebar. Back in
 this app, press **Detect from Discord**. Every unfinished "play a game"
 quest shows up as a card with its reward and end date. Press **Launch** on a
-card to run it for the default 15 minutes 30 seconds with the best known
-path. **Options** opens the game in the Library page. **Help** shows these
+card to run it with the best known path for as long as the quest asks, plus
+30 seconds. A quest for 30 minutes runs for 30 minutes 30 seconds. Once
+Discord shows a quest as done, its game stops by itself. **Options** opens the game in the Library page. **Help** shows these
 steps in the app.
 
 **Launch all** runs every quest on the page at the same time. Discord
 counts several games at once, so they all progress together. Any quest you
 have not accepted yet is accepted for you first, as long as Discord's Quests
-page is open. Where Discord asks which platform you will play on, Desktop is
-picked. Each game runs its own stand-in, since Discord detects each one.
+page is open. A quest can only progress from this PC when the platform
+dropdown on its card says Desktop, so any quest set to a console is switched
+to Desktop too. A quest that still is not accepted or not on Desktop is not
+launched, and the app tells you which one and why. Each game runs its own stand-in, since Discord detects each one.
 Discord only counts a game that has a window, so each stand-in has a tiny one
-parked off-screen, and one countdown window covers the whole group. **Stop all** in that window ends every game
-in it. Games that need extra steps, such as a real Steam install, are left
+parked off-screen, and one countdown window covers the whole group. Each game
+stops when its own quest's time is up. **Stop all** in that window ends
+every game in it. Games that need extra steps, such as a real Steam install, are left
 out and named, so you can launch them on their own.
 
 **Library.** Search all 10,000 or so games Discord knows about. The list
@@ -67,8 +71,9 @@ opens on the games with community-confirmed paths. Pick one to choose its
 executable path, placement and duration, then press **Launch**.
 
 The duration field takes `20m`, `1h30m`, `25:00`, plain seconds like `900`,
-and arithmetic like `10 * 60`. Leave it empty for 15 minutes 30 seconds. The
-extra 30 seconds covers the time Discord and the stand-in take to sync.
+and arithmetic like `10 * 60`. Leave it empty to use the quest's own time,
+or 15 minutes for a game without a detected quest, plus 30 seconds. The extra
+30 seconds covers the time Discord and the stand-in take to sync.
 
 **Orbs.** Your orb balance, how many orbs you earned this week, this month
 and since tracking began, how many are on offer in open quests, and a chart
@@ -76,6 +81,8 @@ of your balance over the last 30 days. The balance is read from the top of
 Discord's Quests page each time that page is read, so the history fills in as
 you use the app. Orbs earned are worked out from the rise between readings,
 and orbs spent from any drop.
+
+![The Orbs page, showing the balance, orbs earned this week and this month, and a 30-day balance chart](docs/orbs.png)
 
 **Sessions.** Running sessions with their progress and a **Stop** button.
 
@@ -99,7 +106,8 @@ finishes, you stop it, or the program is killed partway through.
 
 Closing the main window sends it to the system tray rather than quitting, so
 sessions carry on and nothing is lost. The tray icon shows the time remaining,
-and its menu reopens the window or quits properly. Quitting does stop running
+and its menu reopens the window, runs Launch all or Detect from Discord, or
+quits properly. The window opens where you left it. Quitting does stop running
 sessions, and asks first.
 
 When a session ends you get a notification saying whether it ran the full
@@ -107,17 +115,46 @@ duration or was stopped early. Both can be turned off on the Settings
 page. If your desktop has no system tray, the
 window closes normally and the option is disabled.
 
-**New quest alerts.** When the Quests page is read, either by Watch Discord
-or by pressing Detect, any quest that was not there before gets a Windows
-notification with its reward and end date. The first read only takes note of
-what is already there. Turn alerts off in Settings.
+**Quest alerts.** Windows notifications for three things, each said once:
+a quest that was not there before, with its reward and end date; a quest
+that has reached 100% and is ready to claim; and a quest you have not
+finished that ends today. The first read only takes note of what is already
+there. Turn alerts off in Settings.
+
+**Auto-launch new quests.** Off by default. When on, a new quest is accepted,
+set to Desktop and started as soon as it is found, with no click from you.
+This acts on your Discord account while you are away, which is the kind of
+activity most likely to be flagged by Discord. Use it at your own risk.
 
 **Start with Windows.** Turn this on in Settings and the app opens in the
 tray when you sign in, without showing its window, so new quests are caught
 without you starting it. It adds one entry to your user's startup programs,
 which you can also turn off in Windows Settings under Apps, Startup.
 
+Only one copy of the app runs at a time. Opening it again brings the running
+copy to the front.
+
+**Check for quests in the background.** Off by default. Turn it on in
+Settings and you no longer need to keep Discord's Quests page open. Once an
+hour the app opens that page in Discord, reads it, and goes back to the page
+Discord was on. Discord only draws the page while it is on screen, so it comes
+to the front for about a second while this happens. To keep that out of your
+way it only runs after 5 minutes with no keyboard or mouse use, never while a
+fullscreen game or video is in front, and never while you are using Discord.
+Discord has to be open, though it can sit behind other windows. If it is
+minimized or closed to the tray, the check waits until it is open again.
+
+**Updates.** When the app starts, it checks this project's GitHub releases
+page, at most twice a day, and tells you when a newer version is out. Settings
+then shows a Download button. Nothing about you is sent. Turn it off in
+Settings.
+
 ### If the quest does not progress
+
+First check the quest card in Discord: the dropdown next to Quest Accepted
+must say Desktop. Launch and Launch all switch it for you while the Quests page
+is open. A run that stops early or fails to start stays on the Sessions page
+with a **Retry** button, and a launch that fails offers Retry too.
 
 Some games accept more than one executable. The **Executable path** dropdown
 lists every path known for that game, with community-confirmed ones marked
@@ -262,7 +299,7 @@ data folder. **Export** writes the current theme to a file you can share, and
 ```
 python tools/build_snapshot.py   # refresh the bundled game list
 python tools/make_icon.py        # regenerate the icon, only after changing it
-python tools/make_showcase.py    # redraw docs/showcase.png after changing the interface
+python tools/make_showcase.py    # redraw the README screenshots after changing the interface
 python build.py                  # produce dist/DiscordQuestCompleter.exe
 ```
 
@@ -296,6 +333,8 @@ dqc/
   quests.py     quest sources: detected, shared and marked; new-quest memory
   orbs.py       orb balance history
   startup.py    the Start with Windows entry
+  updates.py    the update check
+  net.py        HTTPS requests with a certificate fix for fresh Windows installs
   themes.py     theme files: presets, saving, import and export
   settings.py   user preferences
   steamlibs.py  finds Steam libraries, used to avoid games you own

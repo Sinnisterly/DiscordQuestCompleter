@@ -134,5 +134,52 @@ check('no stand-in left running', emulated_processes() == 0, emulated_processes(
 wait_until(lambda: all(not e.session.plan.root.exists() for e in entries), 10)
 check('folders cleaned up', all(not e.session.plan.root.exists() for e in entries))
 
+# Once Discord shows a quest at 100%, its game is stopped and counts as finished.
+done_game = catalog.exact('Delta Force')
+backend._launch_group([done_game])
+done_entry = backend.sessions.entries[-1]
+time.sleep(1.0)
+done_game.quest_progress = 100
+backend._stop_finished()
+wait_until(lambda: done_entry.ended is not None, 20)
+done_game.quest_progress = None
+check('stopped when Discord says done', done_entry.ended == 'finished', done_entry.ended)
+for g in list(backend._groups):
+    g.stop()
+wait_until(lambda: emulated_processes() == 0, 10)
+
+# A leftover stand-in from a run that did not clean up must not block a launch.
+from dqc import emulator  # noqa: E402
+stale_game = catalog.exact('Where Winds Meet')
+stale_plan = emulator.plan_session(stale_game)
+stale_plan.exe_path.parent.mkdir(parents=True, exist_ok=True)
+stale_plan.exe_path.write_bytes(b'left over')
+retry_entry = backend._start(stale_plan, 60)
+check('leftover files are cleared, launch goes ahead', retry_entry is not None)
+
+# Stopping early keeps the run listed with Retry; Retry starts it again.
+backend.stopSession(retry_entry.id)
+wait_until(lambda: retry_entry.ended is not None, 20)
+check('stopped run stays listed', retry_entry in backend.sessions.entries and retry_entry.ended == 'stopped')
+count_before = len(backend.sessions.running)
+backend.retrySession(retry_entry.id)
+check('retry starts it again', len(backend.sessions.running) == count_before + 1
+      and retry_entry not in backend.sessions.entries)
+for entry in list(backend.sessions.running):
+    entry.session.stop()
+wait_until(lambda: emulated_processes() == 0, 15)
+
+# A quest set to another platform in Discord would not count, so it must be
+# named in a dialog instead of launched.
+dialogs = []
+backend.dialogRequested.connect(lambda *args: dialogs.append(args))
+xbox_game = catalog.exact('Where Winds Meet')
+xbox_game.quest_platform = 'Xbox'
+before = len(backend.sessions.entries)
+backend._launch_group([xbox_game])
+xbox_game.quest_platform = None
+check('quest on another platform is not launched', len(backend.sessions.entries) == before)
+check('and the user is told why', any('Xbox' in str(d) for d in dialogs))
+
 print('\nFAIL' if failures else '\nOK')
 sys.exit(1 if failures else 0)

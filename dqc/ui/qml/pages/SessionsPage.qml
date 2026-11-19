@@ -84,6 +84,20 @@ Item {
                         visible: item.state === "running"
                         onClicked: Backend.stopSession(item.sessionId)
                     }
+                    // A run that stopped early stays here until retried or dismissed.
+                    AppButton {
+                        visible: item.state === "stopped"
+                        kind: "primary"
+                        glyph: ""
+                        text: "Retry"
+                        onClicked: Backend.retrySession(item.sessionId)
+                    }
+                    AppButton {
+                        visible: item.state === "stopped"
+                        kind: "subtle"
+                        text: "Dismiss"
+                        onClicked: Backend.dismissSession(item.sessionId)
+                    }
                 }
             }
         }

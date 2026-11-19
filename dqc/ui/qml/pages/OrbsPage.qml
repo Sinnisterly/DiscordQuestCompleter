@@ -131,7 +131,7 @@ Item {
                                 function x(i) { return left + (right - left) * (n > 1 ? i / (n - 1) : 0.5) }
                                 function y(v) { return bottom - (bottom - top) * (v - lo) / (hi - lo) }
 
-                                ctx.font = "11px 'Segoe UI'"
+                                ctx.font = "11px 'Segoe UI', sans-serif"
                                 ctx.fillStyle = Theme.c.muted
                                 ctx.strokeStyle = Theme.c.border
                                 ctx.lineWidth = 1

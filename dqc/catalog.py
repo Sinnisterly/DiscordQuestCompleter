@@ -20,7 +20,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import quests
+from . import net, quests
 from .appdirs import bundled, cache_dir
 
 DETECTABLE_URL = 'https://discord.com/api/v9/applications/detectable'
@@ -64,6 +64,14 @@ class Game:
     quest_accepted: bool | None = None  # None when not read from Discord
     quest_heading: str | None = None
     quest_progress: int | None = None   # percent, read from Discord
+    quest_platform: str | None = None   # None when the card has no dropdown
+    quest_minutes: int | None = None    # how long the quest asks you to play
+
+    @property
+    def wrong_platform(self) -> bool:
+        """The quest is tracked on a console or phone, so running the game
+        on this PC will not count until it is switched to Desktop."""
+        return bool(self.quest_platform) and self.quest_platform.lower() != 'desktop'
     quest_ends: str | None = None     # ISO date, when known
     quest_source: str | None = None   # 'discord', 'shared' or 'marked'
     has_quest: bool = False
@@ -171,6 +179,8 @@ def _apply(games: list[Game], active: dict) -> None:
         game.quest_accepted = quest.accepted if quest else None
         game.quest_heading = quest.heading if quest else None
         game.quest_progress = quest.progress if quest else None
+        game.quest_platform = quest.platform if quest else None
+        game.quest_minutes = quest.minutes if quest else None
         game.quest_ends = quest.until.isoformat() if quest and quest.until else None
         game.quest_source = quest.source if quest else None
 
@@ -289,7 +299,7 @@ class Catalog:
             DETECTABLE_URL, headers={'User-Agent': USER_AGENT}
         )
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as resp:
+            with net.urlopen(request, timeout=timeout) as resp:
                 raw = json.load(resp)
         except (urllib.error.URLError, ValueError, OSError, TimeoutError):
             return False

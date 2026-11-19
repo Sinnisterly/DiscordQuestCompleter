@@ -64,6 +64,18 @@ if next(q for q in parse_quests(started).quests if q.game == 'Delta Force').prog
 if by_game['Delta Force'].progress is not None:
     failures.append('a quest that has not started should have no progress')
 
+# An accepted card has a platform dropdown named after the current choice.
+# Anything but Desktop means running the game on this PC will not count.
+tile.children.append(Node('Xbox', 'container_x platformSelectorSecondary_x', 'Button'))
+on_xbox = next(q for q in parse_quests(started).quests if q.game == 'Delta Force')
+if on_xbox.platform != 'Xbox':
+    failures.append(f'platform dropdown not read: {on_xbox.platform}')
+entries_xbox, _ = match_quests([on_xbox], catalog.exact)
+if entries_xbox[0].get('platform') != 'Xbox':
+    failures.append('platform not passed on for saving')
+if by_game['Delta Force'].platform is not None:
+    failures.append('a card without a dropdown should have no platform')
+
 # A page with no tiles must fail safe with a reason.
 empty = parse_quests(Node('Quests - Discord', '', 'Window'))
 if empty.ok or not empty.reason:

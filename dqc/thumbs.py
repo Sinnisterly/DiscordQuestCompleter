@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.request
 
+from . import net
 from .appdirs import thumb_dir
 from .catalog import Game
 
@@ -98,7 +99,7 @@ def fetch(url: str, timeout: int = 15) -> bytes | None:
 
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as resp:
+        with net.urlopen(request, timeout=timeout) as resp:
             if resp.status != 200:
                 _mark_missing(url)
                 return None

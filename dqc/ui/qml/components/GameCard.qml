@@ -13,6 +13,8 @@ Card {
     required property int orbs
     required property int accepted   // 1 yes, 0 no, -1 unknown
     required property int progress   // percent from Discord, -1 unknown
+    required property string wrongPlatform  // e.g. "Xbox"; empty when Desktop or unknown
+    required property string launchTime     // the quest's own time plus the sync margin
     signal details()
 
     border.color: hover.hovered ? Theme.c.accent : Theme.c.border
@@ -72,7 +74,16 @@ Card {
             spacing: 6
             Badge { visible: card.endsLabel !== ""; text: card.endsLabel; tone: "warn" }
             Badge { visible: card.progress >= 100; text: "Done. Claim it in Discord"; tone: "good" }
-            Badge { visible: card.accepted === 1 && card.progress < 100; text: "Accepted"; tone: "good" }
+            Badge {
+                visible: card.wrongPlatform !== ""
+                text: "Set to " + card.wrongPlatform + ", needs Desktop"
+                tone: "bad"
+            }
+            Badge {
+                visible: card.accepted === 1 && card.progress < 100 && card.wrongPlatform === ""
+                text: "Accepted"
+                tone: "good"
+            }
             Badge { visible: card.accepted === 0; text: "Not accepted"; tone: "bad" }
             // Quests read from Discord carry an accepted badge instead.
             Badge {
@@ -113,7 +124,8 @@ Card {
             AppButton {
                 kind: "primary"
                 glyph: ""
-                text: "Launch " + Backend.defaultDuration
+                text: card.progress >= 100 ? "Done" : "Launch " + card.launchTime
+                enabled: card.progress < 100
                 Layout.fillWidth: true
                 onClicked: Backend.quickLaunch(card.gameId)
             }

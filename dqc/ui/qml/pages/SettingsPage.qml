@@ -42,12 +42,61 @@ Item {
                     Rectangle { Layout.fillWidth: true; height: 1; color: Theme.c.border }
                     Toggle {
                         Layout.fillWidth: true
+                        title: "Check for quests in the background"
+                        description: "Once an hour, while you are away from the PC, opens the Quests page in Discord, "
+                                   + "reads it, and goes back to where Discord was. You do not need to open the page yourself."
+                        checked: Backend.backgroundCheck
+                        onToggled: function (value) { Backend.backgroundCheck = value }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 8
+                        spacing: 8
+                        Icon { glyph: "\uE946"; size: 13; color: Theme.c.muted; Layout.alignment: Qt.AlignTop }
+                        Txt {
+                            Layout.fillWidth: true
+                            role: "muted"
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
+                            text: "Discord comes to the front for about a second while this runs, so it only happens after "
+                                + "5 minutes with no keyboard or mouse use, never while a fullscreen game or video is in front, "
+                                + "and never while you are using Discord. Discord must be open, not minimized. "
+                                + "Open the Help on the Quests page for more."
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.c.border }
+                    Toggle {
+                        Layout.fillWidth: true
                         enabled: Backend.trayAvailable
-                        title: "Alert me about new quests"
-                        description: "Shows a Windows notification when a quest appears that was not there before. "
-                                   + "Works with Watch Discord above, or when you press Detect."
+                        title: "Quest alerts"
+                        description: "Windows notifications when a new quest appears, when one is ready to claim, "
+                                   + "and when one you have not finished ends today."
                         checked: Backend.alertsEnabled
                         onToggled: function (value) { Backend.alertsEnabled = value }
+                    }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.c.border }
+                    Toggle {
+                        Layout.fillWidth: true
+                        title: "Auto-launch new quests"
+                        description: "When a new quest is found, accept it, set it to Desktop and start it, with no click from you."
+                        checked: Backend.autoLaunch
+                        onToggled: function (value) { Backend.autoLaunch = value }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 8
+                        spacing: 8
+                        Icon { glyph: "\uE7BA"; size: 13; color: Theme.c.warn; Layout.alignment: Qt.AlignTop }
+                        Txt {
+                            Layout.fillWidth: true
+                            color: Theme.c.warn
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
+                            text: "This acts on your Discord account while you are away. Automation like this is the "
+                                + "kind of activity most likely to be flagged by Discord, and can lead to a warning or a ban. "
+                                + "Off by default. Use it at your own risk."
+                        }
                     }
                     RowLayout {
                         Layout.fillWidth: true
@@ -134,6 +183,45 @@ Item {
                         wrapMode: Text.WordWrap
                         elide: Text.ElideNone
                         Layout.fillWidth: true
+                    }
+                }
+            }
+
+            Txt { text: "Updates"; role: "section"; Layout.topMargin: 8 }
+            Card {
+                Layout.fillWidth: true
+                implicitHeight: updateCol.implicitHeight + 24
+                ColumnLayout {
+                    id: updateCol
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    anchors.leftMargin: 18
+                    anchors.rightMargin: 18
+                    spacing: 0
+                    RowLayout {
+                        visible: Backend.updateVersion !== ""
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        Layout.bottomMargin: 6
+                        spacing: 10
+                        Icon { glyph: "\uE896"; size: 16; color: Theme.c.accentHi }
+                        Txt {
+                            text: "Version " + Backend.updateVersion + " is available. You have " + Backend.version + "."
+                            Layout.fillWidth: true
+                        }
+                        AppButton {
+                            kind: "primary"
+                            compact: true
+                            text: "Download"
+                            onClicked: Qt.openUrlExternally(Backend.updateUrl)
+                        }
+                    }
+                    Toggle {
+                        Layout.fillWidth: true
+                        title: "Check for updates"
+                        description: "Looks at the project's GitHub releases page when the app starts, at most twice a day. Nothing about you is sent."
+                        checked: Backend.checkUpdates
+                        onToggled: function (value) { Backend.checkUpdates = value }
                     }
                 }
             }

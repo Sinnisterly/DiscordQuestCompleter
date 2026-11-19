@@ -9,7 +9,7 @@ Card {
     property var detail: ({})
     readonly property bool hasGame: detail.id !== undefined
     property var planResult: ({ ok: false, text: "" })
-    property var durationResult: Backend.durationHint("")
+    property var durationResult: Backend.durationHint("", gameId)
 
     function reload() {
         detail = gameId ? Backend.gameDetail(gameId) : ({})
@@ -145,9 +145,11 @@ Card {
                     AppField {
                         id: durationField
                         Layout.fillWidth: true
-                        placeholderText: Backend.defaultDuration
+                        placeholderText: panel.durationResult.ok && durationField.text === ""
+                                         ? panel.durationResult.text.replace("Runs for ", "").replace(" (default)", "")
+                                         : Backend.defaultDuration
                         invalid: !panel.durationResult.ok
-                        onTextChanged: panel.durationResult = Backend.durationHint(text)
+                        onTextChanged: panel.durationResult = Backend.durationHint(text, panel.gameId)
                     }
                 }
                 ColumnLayout {

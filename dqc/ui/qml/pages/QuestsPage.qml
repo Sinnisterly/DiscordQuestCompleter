@@ -77,6 +77,8 @@ Item {
                 required property int orbs
                 required property int accepted
                 required property int progress
+                required property string wrongPlatform
+                required property string launchTime
                 width: grid.cellWidth
                 height: grid.cellHeight
                 GameCard {
@@ -91,6 +93,8 @@ Item {
                     orbs: cell.orbs
                     accepted: cell.accepted
                     progress: cell.progress
+                    wrongPlatform: cell.wrongPlatform
+                    launchTime: cell.launchTime
                     onDetails: page.openGame(cell.gameId, cell.name)
                     opacity: 0
                     Component.onCompleted: opacity = 1

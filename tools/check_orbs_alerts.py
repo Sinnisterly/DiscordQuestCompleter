@@ -48,6 +48,19 @@ check('nothing new', quests.new_quests(['A QUEST', 'B QUEST']) == [])
 check('a new quest is reported', quests.new_quests(['A QUEST', 'C QUEST']) == ['C QUEST'])
 check('a quest that returns is not reported again', quests.new_quests(['B QUEST']) == [])
 
+print('reminders and quest time')
+check('first reminder fires', quests.remind_once('ready:A QUEST'))
+check('same reminder does not fire again', not quests.remind_once('ready:A QUEST'))
+from dqc.duration import quest_seconds  # noqa: E402
+check('30-minute quest runs 30m 30s', quest_seconds(30) == 1830)
+check('unknown quest runs 15m 30s', quest_seconds(None) == 930)
+
+print('updates')
+from dqc import updates  # noqa: E402
+check('newer release noticed', updates.is_newer('v2.6', '2.5.0'))
+check('same release ignored', not updates.is_newer('v2.5', '2.5.0'))
+check('older release ignored', not updates.is_newer('v2.1', '2.5.0'))
+
 print('start with windows')
 before = startup.is_enabled()
 check('command uses --tray', startup.command().endswith(startup.TRAY_FLAG), startup.command())

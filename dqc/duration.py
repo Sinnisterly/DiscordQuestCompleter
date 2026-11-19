@@ -17,9 +17,12 @@ import ast
 import operator
 import re
 
-# 15m30s rather than a flat 15m: Discord and the stand-in take a few seconds
-# to sync, and a quest asking for 15 minutes can otherwise fall just short.
-DEFAULT_SECONDS = 930
+# Discord and the stand-in take a few seconds to sync, so every run gets
+# this much on top of the time the quest asks for. Without it a quest asking
+# for 15 minutes can fall just short.
+SYNC_MARGIN = 30
+DEFAULT_MINUTES = 15
+DEFAULT_SECONDS = DEFAULT_MINUTES * 60 + SYNC_MARGIN
 MAX_SECONDS = 24 * 60 * 60
 
 _BIN_OPS = {
@@ -74,6 +77,13 @@ def _from_clock(text: str):
     if len(nums) == 2:
         return nums[0] * 60 + nums[1]
     return nums[0] * 3600 + nums[1] * 60 + nums[2]
+
+
+def quest_seconds(minutes: int | None) -> int:
+    """How long to run for a quest that asks for this many minutes."""
+    if not minutes or minutes <= 0:
+        return DEFAULT_SECONDS
+    return min(MAX_SECONDS, minutes * 60 + SYNC_MARGIN)
 
 
 def parse_duration(text, default: int = DEFAULT_SECONDS) -> int:

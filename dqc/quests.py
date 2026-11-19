@@ -20,6 +20,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
+from . import net
 from .appdirs import bundled, cache_dir, data_dir
 
 USER_AGENT = 'DiscordQuestCompleter/1.0'
@@ -41,6 +42,8 @@ class Quest:
     accepted: bool | None = None  # known only for quests read from Discord
     heading: str | None = None    # the card heading in Discord, for accepting
     progress: int | None = None   # percent done, as Discord's ring shows it
+    platform: str | None = None   # platform the quest is tracked on, if shown
+    minutes: int | None = None    # how long the quest asks you to play
     source: str = 'shared'
 
     @property
@@ -173,6 +176,25 @@ def new_quests(keys: list[str]) -> list[str]:
     return [] if first_time else fresh
 
 
+REMINDED_NAME = 'reminders.json'
+
+
+def remind_once(key: str) -> bool:
+    """True the first time a reminder key is seen, and never again.
+
+    Keys look like 'ready:<card heading>' or 'ending:<card heading>:<date>',
+    so each quest is announced as ready, or as ending, only once.
+    """
+    target = data_dir() / REMINDED_NAME
+    payload = _read(target)
+    done = list((payload or {}).get('done') or []) if isinstance(payload, dict) else []
+    if key in done:
+        return False
+    done = (done + [key])[-500:]
+    _write_json(target, {'version': 1, 'done': done})
+    return True
+
+
 def _fresh_detected() -> dict:
     """The saved snapshot, or {} when it is too old to trust."""
     payload = _read(cache_dir() / DETECTED_NAME) or {}
@@ -221,6 +243,8 @@ def load_detected() -> dict[str, Quest]:
             accepted=raw.get('accepted') if isinstance(raw.get('accepted'), bool) else None,
             heading=raw.get('heading') or None,
             progress=raw.get('progress') if isinstance(raw.get('progress'), int) else None,
+            platform=raw.get('platform') if isinstance(raw.get('platform'), str) else None,
+            minutes=raw.get('minutes') if isinstance(raw.get('minutes'), int) else None,
             source='discord',
         )
         if not quest.expired:
@@ -259,7 +283,7 @@ def refresh(timeout: int = 15) -> bool:
 
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as resp:
+        with net.urlopen(request, timeout=timeout) as resp:
             payload = json.load(resp)
     except (urllib.error.URLError, ValueError, OSError, TimeoutError):
         return False

@@ -8,7 +8,7 @@ import time
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot, Property
 
 from ..catalog import Game
-from ..duration import format_duration
+from ..duration import format_duration, quest_seconds
 
 
 def ends_label(iso: str | None) -> str:
@@ -46,6 +46,8 @@ class GameListModel(QAbstractListModel):
         Qt.UserRole + 12: b'title',
         Qt.UserRole + 13: b'accepted',   # 1 yes, 0 no, -1 unknown
         Qt.UserRole + 14: b'progress',   # percent from Discord, -1 unknown
+        Qt.UserRole + 15: b'wrongPlatform',  # the platform it counts on, if not Desktop
+        Qt.UserRole + 16: b'launchTime',     # how long Launch runs it, as text
     }
 
     def __init__(self, parent=None):
@@ -87,6 +89,10 @@ class GameListModel(QAbstractListModel):
             return game.quest_orbs or 0
         if name == b'title':
             return game.quest_title or game.name
+        if name == b'wrongPlatform':
+            return game.quest_platform if game.wrong_platform else ''
+        if name == b'launchTime':
+            return format_duration(quest_seconds(game.quest_minutes))
         if name == b'progress':
             return -1 if game.quest_progress is None else game.quest_progress
         if name == b'accepted':
@@ -129,6 +135,7 @@ class SessionEntry:
         self.started = time.monotonic()
         self.ended: str | None = None   # 'finished' or 'stopped'
         self.group = None               # GroupWindow when launched with others
+        self.discord_done = False       # stopped because Discord showed 100%
 
     @property
     def elapsed(self) -> float:

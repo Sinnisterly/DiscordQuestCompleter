@@ -356,9 +356,16 @@ class Session:
                     'cleanly. Restart the app to have it restored.'
                 )
         elif plan.exe_path.exists():
-            raise EmulationError(
-                f'{plan.exe_path} already exists. Another session may be running.'
-            )
+            # Left over from a run that did not clean up. A sandbox folder is
+            # ours alone, so clear it; a running stand-in keeps its file
+            # locked, which is how a real second session is told apart.
+            if plan.mode == SANDBOX and plan.root is not None:
+                shutil.rmtree(plan.root, ignore_errors=True)
+            if plan.exe_path.exists():
+                raise EmulationError(
+                    f'{plan.game.name} is already running from this app. Stop it on the '
+                    'Sessions page first.'
+                )
 
         # Journal before mutating, so a crash here is still recoverable.
         self.entry = journal.Entry(
